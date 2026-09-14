@@ -56,16 +56,20 @@ Redis와 Docker를 모두 설치하지 않아도 수동 계산, UID 불러오기
 dotnet restore ArtifactGrade.slnx --configfile NuGet.Config
 ```
 
-첫 번째 터미널에서 API를 실행합니다.
+그다음 파일 탐색기에서 저장소 루트의 `start-dev.cmd`를 더블클릭합니다. API와 클라이언트가 각각 `dotnet watch`로 실행되고, 화면 준비가 끝나면 <http://localhost:5111>이 자동으로 열립니다. 이미 서버가 실행 중이면 중복으로 실행하지 않고 화면만 엽니다.
+
+개발 중에는 코드를 저장하면 자동으로 다시 빌드하고 반영합니다. 즉시 전체 재시작이 필요하면 해당 실행 창에서 `Ctrl+R`, 종료할 때는 `Ctrl+C`를 누릅니다. 평소에는 PowerShell을 닫고 다시 켤 필요가 없습니다.
+
+명령어를 직접 실행하려면 첫 번째 터미널에서 API를 실행합니다.
 
 ```powershell
-dotnet run --project src/ArtifactGrade.Api
+dotnet watch --project src/ArtifactGrade.Api run
 ```
 
 두 번째 터미널에서 클라이언트를 실행합니다.
 
 ```powershell
-dotnet run --project src/ArtifactGrade.Client
+dotnet watch --project src/ArtifactGrade.Client run
 ```
 
 브라우저에서 <http://localhost:5111>로 접속합니다. Redis 연결 경고는 예상된 동작이며 계산과 자동 가져오기는 계속 사용할 수 있습니다.
