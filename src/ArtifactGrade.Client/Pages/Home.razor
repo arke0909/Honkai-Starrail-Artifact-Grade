@@ -94,7 +94,7 @@
                     @foreach (var group in CharacterGroups)
                     {
                         <button class="@CharacterTabClass(group)" type="button"
-                                aria-pressed="@(group.CharacterName == _selectedCharacterName ? "true" : "false")"
+                                aria-pressed="@(group.CharacterId == _selectedCharacterId ? "true" : "false")"
                                 disabled="@IsImportBusy" @onclick="() => SelectCharacter(group)">
                             <strong>@CharacterDisplayName(group)</strong>
                             <span>@(group.Relics.Count)개</span>
@@ -105,16 +105,7 @@
 
             @if (SelectedCharacterGroup is { } selectedCharacter)
             {
-                <div class="import-controls" aria-label="@($"{CharacterDisplayName(selectedCharacter)} 유물")">
-                    <label class="field">
-                        <span>@CharacterDisplayName(selectedCharacter) 유물 선택</span>
-                        <select @bind="_selectedRelicKey" disabled="@IsImportBusy">
-                            @foreach (var relic in selectedCharacter.Relics)
-                            {
-                                <option value="@relic.Key">@RelicLabel(relic)</option>
-                            }
-                        </select>
-                    </label>
+                <div class="loadout-toolbar" aria-label="@($"{CharacterDisplayName(selectedCharacter)} 유물 평가 설정")">
                     <label class="field">
                         <span>일괄 평가 프로필</span>
                         <select @bind="_input.Profile" disabled="@IsImportBusy">
@@ -124,11 +115,87 @@
                             }
                         </select>
                     </label>
-                    <button class="secondary-button" type="button" disabled="@IsImportBusy" @onclick="ApplySelectedRelic">선택 유물 적용</button>
                     <button class="primary-button compact-button" type="button" disabled="@IsImportBusy"
                             @onclick="CalculateImportedRelicsAsync">
                         @(_isBatchScoring ? "계산 중..." : "전체 점수 계산")
                     </button>
+                </div>
+
+                <div class="loadout-board">
+                    <article class="character-showcase">
+                        <span class="showcase-label">CURRENT CHARACTER</span>
+                        @if (SelectedCharacterInfo is { ImageUrl: { } characterImageUrl } characterInfo)
+                        {
+                            <img src="@characterImageUrl"
+                                 alt="@($"{characterInfo.Name} 캐릭터 전신 이미지")" />
+                        }
+                        else
+                        {
+                            <div class="character-image-placeholder" role="img"
+                                 aria-label="@($"{CharacterDisplayName(selectedCharacter)} 이미지 없음")">
+                                <span>이미지 정보 없음</span>
+                            </div>
+                        }
+                        <div class="character-caption">
+                            <strong>@CharacterDisplayName(selectedCharacter)</strong>
+                            <span>장착 유물 @(selectedCharacter.Relics.Count)개</span>
+                        </div>
+                    </article>
+
+                    <div class="relic-showcase" aria-label="@($"{CharacterDisplayName(selectedCharacter)} 장착 유물 전체")">
+                        @foreach (var relic in selectedCharacter.Relics.OrderBy(item => item.Slot))
+                        {
+                            var scored = _batchScores.FirstOrDefault(item => item.Relic.Key == relic.Key);
+                            <article class="relic-card">
+                                <div class="relic-card-media">
+                                    @if (relic.ImageUrl is { } relicImageUrl)
+                                    {
+                                        <img src="@relicImageUrl" alt="@($"{relic.Name} 유물 이미지")" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <div class="relic-image-placeholder" role="img" aria-label="유물 이미지 없음">
+                                            <span>◇</span>
+                                        </div>
+                                    }
+                                    <span class="relic-slot">@SlotsById[relic.Slot].Name</span>
+                                </div>
+                                <div class="relic-card-content">
+                                    <strong>@relic.Name</strong>
+                                    <span class="relic-set">@relic.SetName · +@relic.Level</span>
+                                    <div class="main-stat-value">
+                                        <span>주옵션 계수</span>
+                                        <b>@RelicMainStatSummary(relic)</b>
+                                    </div>
+                                    <p>@RelicSubstatSummary(relic)</p>
+
+                                    <div class="relic-card-footer">
+                                        @if (scored is { Result.IsValid: true })
+                                        {
+                                            <b class="relic-score">@scored.Result.Grade · @scored.Result.Score.ToString("0.0")점</b>
+                                        }
+                                        else if (scored is not null)
+                                        {
+                                            <b class="relic-score invalid-score">계산 불가</b>
+                                        }
+                                        else
+                                        {
+                                            <span class="score-pending">점수 계산 전</span>
+                                        }
+                                        <button class="text-button" type="button" @onclick="() => ApplyImportedRelic(relic)">입력 적용</button>
+                                    </div>
+
+                                    @if (scored is { Result.IsValid: false })
+                                    {
+                                        @foreach (var error in scored.Result.Errors)
+                                        {
+                                            <span class="relic-error">@error</span>
+                                        }
+                                    }
+                                </div>
+                            </article>
+                        }
+                    </div>
                 </div>
             }
         }
@@ -138,35 +205,6 @@
             <p class="import-status" role="status">@_importStatus</p>
         }
 
-        @if (SelectedCharacterGroup is { } selectedScoresCharacter && SelectedCharacterScores.Count > 0)
-        {
-            <div class="batch-results" aria-label="@($"{CharacterDisplayName(selectedScoresCharacter)} 유물 점수")">
-                @foreach (var scored in SelectedCharacterScores)
-                {
-                    <div class="batch-row">
-                        <div>
-                            <strong>@RelicLabel(scored.Relic)</strong>
-                            <span>@RelicStatSummary(scored.Relic)</span>
-                        </div>
-                        <div class="batch-score">
-                            @if (scored.Result.IsValid)
-                            {
-                                <b>@scored.Result.Grade · @scored.Result.Score.ToString("0.0")점</b>
-                            }
-                            else
-                            {
-                                <b class="invalid-score">계산 불가</b>
-                                @foreach (var error in scored.Result.Errors)
-                                {
-                                    <span class="batch-error">@error</span>
-                                }
-                            }
-                        </div>
-                        <button class="text-button" type="button" @onclick="() => ApplyImportedRelic(scored.Relic)">입력칸에 적용</button>
-                    </div>
-                }
-            </div>
-        }
     }
 </section>
 
@@ -391,8 +429,7 @@
     private ScoringProfileId? _resultProfile;
     private readonly List<string> _messages = [];
     private string _uid = string.Empty;
-    private string? _selectedCharacterName;
-    private string? _selectedRelicKey;
+    private string? _selectedCharacterId;
     private string? _importError;
     private string? _importStatus;
     private bool _isImporting;
@@ -404,19 +441,9 @@
         ? []
         : RelicCharacterGrouping.Create(_importResult.Relics);
     private RelicCharacterGroup? SelectedCharacterGroup => CharacterGroups.FirstOrDefault(group =>
-        group.CharacterName == _selectedCharacterName);
-    private IReadOnlyList<ScoredImportedRelic> SelectedCharacterScores
-    {
-        get
-        {
-            var selectedRelicKeys = SelectedCharacterGroup?.Relics
-                .Select(relic => relic.Key)
-                .ToHashSet(StringComparer.Ordinal);
-            return selectedRelicKeys is null
-                ? []
-                : _batchScores.Where(score => selectedRelicKeys.Contains(score.Relic.Key)).ToArray();
-        }
-    }
+        group.CharacterId == _selectedCharacterId);
+    private ImportedCharacter? SelectedCharacterInfo => _importResult?.Characters.FirstOrDefault(character =>
+        character.Id == _selectedCharacterId);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -559,8 +586,7 @@
 
         _importResult = result;
         var firstCharacter = CharacterGroups.FirstOrDefault();
-        _selectedCharacterName = firstCharacter?.CharacterName;
-        _selectedRelicKey = firstCharacter?.Relics.FirstOrDefault()?.Key;
+        _selectedCharacterId = firstCharacter?.CharacterId;
         _batchScores.Clear();
         _importStatus = result.Relics.Count > 0
             ? $"5성 유물 {result.Relics.Count}개를 불러왔습니다."
@@ -574,34 +600,16 @@
             return;
         }
 
-        _selectedCharacterName = group.CharacterName;
-        _selectedRelicKey = group.Relics.FirstOrDefault()?.Key;
+        _selectedCharacterId = group.CharacterId;
     }
 
     private string CharacterTabClass(RelicCharacterGroup group) =>
-        group.CharacterName == _selectedCharacterName
+        group.CharacterId == _selectedCharacterId
             ? "character-tab active"
             : "character-tab";
 
     private static string CharacterDisplayName(RelicCharacterGroup group) =>
         group.CharacterName ?? UnequippedLabel;
-
-    private void ApplySelectedRelic()
-    {
-        if (IsImportBusy)
-        {
-            return;
-        }
-
-        var relic = _importResult?.Relics.FirstOrDefault(item => item.Key == _selectedRelicKey);
-        if (relic is null)
-        {
-            _importError = "적용할 유물을 선택해 주세요.";
-            return;
-        }
-
-        ApplyImportedRelic(relic);
-    }
 
     private void ApplyImportedRelic(ImportedRelic relic)
     {
@@ -721,14 +729,21 @@
         return $"{relic.SetName} · {SlotsById[relic.Slot].Name} +{relic.Level} · {equipped}";
     }
 
-    private static string RelicStatSummary(ImportedRelic relic)
+    private static string RelicMainStatSummary(ImportedRelic relic)
     {
         var mainStat = MainStatsById[relic.MainStat];
+        return relic.MainStatValue.HasValue
+            ? $"{mainStat.Name} {relic.MainStatValue.Value:0.##}{mainStat.Unit}"
+            : $"{mainStat.Name} · 수치 정보 없음";
+    }
+
+    private static string RelicSubstatSummary(ImportedRelic relic)
+    {
         var substats = string.Join(
             " · ",
             relic.Substats.Select(substat =>
                 $"{StatsById[substat.Stat].Name} {substat.Value:0.##}{StatsById[substat.Stat].Unit}"));
-        return $"주옵션 {mainStat.Name}{mainStat.Unit} · 부옵션 {substats}";
+        return $"부옵션 {substats}";
     }
 
     private async Task CalculateAsync()

@@ -15,10 +15,12 @@ public sealed class MihomoRelicParserTests
                 {
                   "id": "1212",
                   "name": "Jingliu",
+                  "portrait": "image/character_portrait/1212.png",
                   "relics": [
                     {
                       "id": "61023",
                       "name": "Musketeer's Wind-Hunting Shawl",
+                      "icon": "icon/relic/102_2.png",
                       "type": 3,
                       "set_name": "Musketeer of Wild Wheat",
                       "rarity": 5,
@@ -44,8 +46,13 @@ public sealed class MihomoRelicParserTests
         var relic = Assert.Single(result.Relics);
         Assert.Equal("1212:3", relic.Key);
         Assert.Equal("Jingliu", relic.EquippedBy);
+        Assert.Equal("1212", relic.EquippedCharacterId);
         Assert.Equal(RelicSlot.Body, relic.Slot);
         Assert.Equal(RelicMainStat.AttackPercent, relic.MainStat);
+        Assert.Equal(43.2m, relic.MainStatValue);
+        Assert.Equal(
+            "https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/relic/102_2.png",
+            relic.ImageUrl);
         Assert.Equal(
             [
                 new RelicSubstat(RelicStat.CritRate, 6.48m),
@@ -54,6 +61,50 @@ public sealed class MihomoRelicParserTests
                 new RelicSubstat(RelicStat.FlatAttack, 21.168754m)
             ],
             relic.Substats);
+        var character = Assert.Single(result.Characters);
+        Assert.Equal("1212", character.Id);
+        Assert.Equal("Jingliu", character.Name);
+        Assert.Equal(
+            "https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/image/character_portrait/1212.png",
+            character.ImageUrl);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void KeepsRelicDataWhenOptionalImageFieldsAreMalformed()
+    {
+        const string json = """
+            {
+              "player": { "nickname": "Trailblazer" },
+              "characters": [
+                {
+                  "id": "1212",
+                  "name": "Jingliu",
+                  "portrait": 1212,
+                  "relics": [
+                    {
+                      "id": "61021",
+                      "name": "Hunter's Artaius Hood",
+                      "icon": { "invalid": true },
+                      "type": 1,
+                      "set_name": "Hunter of Glacial Forest",
+                      "rarity": 5,
+                      "level": 15,
+                      "main_affix": { "field": "hp", "value": 705.6, "percent": false },
+                      "sub_affix": [
+                        { "field": "crit_rate", "value": 0.0648, "percent": true }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+
+        var result = MihomoRelicParser.Parse(json);
+
+        Assert.Null(Assert.Single(result.Characters).ImageUrl);
+        Assert.Null(Assert.Single(result.Relics).ImageUrl);
         Assert.Empty(result.Warnings);
     }
 

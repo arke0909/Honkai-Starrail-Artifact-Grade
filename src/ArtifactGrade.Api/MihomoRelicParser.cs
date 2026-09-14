@@ -43,6 +43,7 @@ public static class MihomoRelicParser
         }
 
         var relics = new List<ImportedRelic>();
+        var importedCharacters = new List<ImportedCharacter>();
         var warnings = new List<string>();
 
         foreach (var character in characters.EnumerateArray())
@@ -57,6 +58,11 @@ public static class MihomoRelicParser
             var characterName = character.TryGetProperty("name", out var characterNameElement)
                 ? characterNameElement.GetString() ?? characterId
                 : characterId;
+
+            importedCharacters.Add(new ImportedCharacter(
+                characterId,
+                characterName,
+                ParseAssetUrl(character, "portrait")));
 
             if (!character.TryGetProperty("relics", out var characterRelics)
                 || characterRelics.ValueKind != JsonValueKind.Array)
@@ -81,6 +87,7 @@ public static class MihomoRelicParser
 
                     var slotNumber = relic.GetProperty("type").GetInt32();
                     var mainAffix = relic.GetProperty("main_affix");
+                    var mainStat = ParseMainStat(mainAffix);
                     var substats = relic.GetProperty("sub_affix")
                         .EnumerateArray()
                         .Select(ParseSubstat)
@@ -94,8 +101,11 @@ public static class MihomoRelicParser
                         5,
                         relic.GetProperty("level").GetInt32(),
                         ParseSlot(slotNumber),
-                        ParseMainStat(mainAffix),
-                        substats));
+                        mainStat,
+                        substats,
+                        ParseMainStatValue(mainAffix),
+                        ParseAssetUrl(relic, "icon"),
+                        characterId));
                 }
                 catch (Exception exception) when (IsJsonShapeException(exception))
                 {
@@ -110,7 +120,12 @@ public static class MihomoRelicParser
             }
         }
 
-        return new RelicImportResponse("MiHoMo UID", playerName, relics, warnings);
+        return new RelicImportResponse(
+            "MiHoMo UID",
+            playerName,
+            importedCharacters,
+            relics,
+            warnings);
     }
 
     private static RelicSubstat ParseSubstat(JsonElement element)
@@ -166,6 +181,26 @@ public static class MihomoRelicParser
             ("sp_rate", true) => RelicMainStat.EnergyRegenerationRate,
             _ => throw new JsonException($"지원하지 않는 주옵션입니다: {field}")
         };
+    }
+
+    private static decimal ParseMainStatValue(JsonElement element)
+    {
+        var value = element.GetProperty("value").GetDecimal();
+        return element.GetProperty("percent").GetBoolean()
+            ? value * 100m
+            : value;
+    }
+
+    private static string? ParseAssetUrl(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var pathElement)
+            || pathElement.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var path = pathElement.GetString();
+        return StarRailAssetUrls.FromPath(path);
     }
 
     private static RelicStat ParseSubstatKind(string field, bool isPercent) => (field, isPercent) switch

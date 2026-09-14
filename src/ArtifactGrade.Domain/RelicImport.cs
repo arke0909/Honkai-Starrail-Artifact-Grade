@@ -9,11 +9,20 @@ public sealed record ImportedRelic(
     int Level,
     RelicSlot Slot,
     RelicMainStat MainStat,
-    IReadOnlyList<RelicSubstat> Substats);
+    IReadOnlyList<RelicSubstat> Substats,
+    decimal? MainStatValue,
+    string? ImageUrl = null,
+    string? EquippedCharacterId = null);
+
+public sealed record ImportedCharacter(
+    string Id,
+    string Name,
+    string? ImageUrl);
 
 public sealed record RelicImportResponse(
     string Source,
     string? PlayerName,
+    IReadOnlyList<ImportedCharacter> Characters,
     IReadOnlyList<ImportedRelic> Relics,
     IReadOnlyList<string> Warnings,
     bool FromCache = false);
@@ -27,6 +36,7 @@ public sealed record ScoredImportedRelic(
     ScoreResult Result);
 
 public sealed record RelicCharacterGroup(
+    string? CharacterId,
     string? CharacterName,
     IReadOnlyList<ImportedRelic> Relics);
 
@@ -34,11 +44,18 @@ public static class RelicCharacterGrouping
 {
     public static IReadOnlyList<RelicCharacterGroup> Create(
         IReadOnlyList<ImportedRelic> relics) => relics
-        .GroupBy(relic => string.IsNullOrWhiteSpace(relic.EquippedBy)
-            ? null
-            : relic.EquippedBy.Trim())
-        .OrderBy(group => group.Key is null ? 1 : 0)
-        .Select(group => new RelicCharacterGroup(group.Key, group.ToArray()))
+        .GroupBy(relic => (
+            CharacterId: string.IsNullOrWhiteSpace(relic.EquippedCharacterId)
+                ? null
+                : relic.EquippedCharacterId.Trim(),
+            CharacterName: string.IsNullOrWhiteSpace(relic.EquippedBy)
+                ? null
+                : relic.EquippedBy.Trim()))
+        .OrderBy(group => group.Key.CharacterId is null && group.Key.CharacterName is null ? 1 : 0)
+        .Select(group => new RelicCharacterGroup(
+            group.Key.CharacterId,
+            group.Key.CharacterName,
+            group.ToArray()))
         .ToArray();
 }
 

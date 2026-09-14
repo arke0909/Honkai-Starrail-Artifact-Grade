@@ -91,6 +91,22 @@ public sealed class ScoreCalculatorTests
         Assert.Equal("%", RelicCatalog.Substats.Single(item => item.Value == RelicStat.CritRate).Unit);
     }
 
+    [Theory]
+    [InlineData(RelicMainStat.FlatHp, 15, 705.6)]
+    [InlineData(RelicMainStat.FlatAttack, 15, 352.8)]
+    [InlineData(RelicMainStat.AttackPercent, 15, 43.2)]
+    [InlineData(RelicMainStat.CritRate, 15, 32.4)]
+    [InlineData(RelicMainStat.Speed, 15, 25.032)]
+    [InlineData(RelicMainStat.PhysicalDamage, 15, 38.8803)]
+    [InlineData(RelicMainStat.EnergyRegenerationRate, 15, 19.4394)]
+    public void CalculatesFiveStarMainStatValueAtEnhancementLevel(
+        RelicMainStat mainStat,
+        int level,
+        double expected)
+    {
+        Assert.Equal((decimal)expected, RelicMainStatValues.Calculate(mainStat, level));
+    }
+
     [Fact]
     public void RejectsMainStatThatCannotAppearOnSelectedSlot()
     {

@@ -10,6 +10,7 @@ $scannerPayload = @{
     version = 4
     relics = @(
         @{
+            set_id = "102"
             name = "Musketeer of Wild Wheat"
             slot = "Hands"
             rarity = 5
@@ -38,7 +39,10 @@ if ($import.source -ne "HSR Scanner" -or $import.relics.Count -ne 1) {
     throw "Unexpected scanner import result."
 }
 
-if ($import.relics[0].equippedBy -ne "Bronya" -or $import.relics[0].mainStat -ne "FlatAttack") {
+if ($import.relics[0].equippedBy -ne "Bronya" `
+    -or $import.relics[0].mainStat -ne "FlatAttack" `
+    -or $import.relics[0].mainStatValue -ne 352.8 `
+    -or -not $import.relics[0].imageUrl) {
     throw "Unexpected scanner relic mapping."
 }
 

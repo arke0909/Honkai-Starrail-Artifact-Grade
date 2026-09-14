@@ -68,7 +68,13 @@ public static class HsrScannerRelicParser
             }
         }
 
-        return new RelicImportResponse("HSR Scanner", null, importedRelics, warnings);
+        var importedCharacters = characterNames
+            .Select(character => new ImportedCharacter(
+                character.Key,
+                character.Value,
+                StarRailAssetUrls.CharacterPortrait(character.Key)))
+            .ToArray();
+        return new RelicImportResponse("HSR Scanner", null, importedCharacters, importedRelics, warnings);
     }
 
     private static IReadOnlyDictionary<string, string> ParseCharacterNames(JsonElement root)
@@ -125,6 +131,15 @@ public static class HsrScannerRelicParser
             .EnumerateArray()
             .Select(ParseSubstat)
             .ToArray();
+        var level = relic.GetProperty("level").GetInt32();
+        var mainStat = ParseMainStat(relic.GetProperty("mainstat").GetString(), slot);
+        decimal? mainStatValue = level is >= 0 and <= 15
+            ? RelicMainStatValues.Calculate(mainStat, level)
+            : null;
+        var setId = relic.TryGetProperty("set_id", out var setIdElement)
+            && setIdElement.ValueKind == JsonValueKind.String
+                ? setIdElement.GetString()
+                : null;
 
         return new ImportedRelic(
             string.IsNullOrWhiteSpace(key) ? $"scanner:{relicIndex}" : key,
@@ -132,10 +147,13 @@ public static class HsrScannerRelicParser
             setName,
             equippedBy,
             5,
-            relic.GetProperty("level").GetInt32(),
+            level,
             slot,
-            ParseMainStat(relic.GetProperty("mainstat").GetString(), slot),
-            substats);
+            mainStat,
+            substats,
+            mainStatValue,
+            StarRailAssetUrls.RelicIcon(setId, slot),
+            EquippedCharacterId: location);
     }
 
     private static RelicSubstat ParseSubstat(JsonElement element)

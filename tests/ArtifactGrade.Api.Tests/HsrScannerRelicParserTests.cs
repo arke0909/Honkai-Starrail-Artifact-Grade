@@ -15,6 +15,7 @@ public sealed class HsrScannerRelicParserTests
               "version": 4,
               "relics": [
                 {
+                  "set_id": "102",
                   "name": "Musketeer of Wild Wheat",
                   "slot": "Hands",
                   "rarity": 5,
@@ -42,8 +43,19 @@ public sealed class HsrScannerRelicParserTests
         var relic = Assert.Single(result.Relics);
         Assert.Equal("relic_1", relic.Key);
         Assert.Equal("Bronya", relic.EquippedBy);
+        Assert.Equal("1101", relic.EquippedCharacterId);
         Assert.Equal(RelicSlot.Hands, relic.Slot);
         Assert.Equal(RelicMainStat.FlatAttack, relic.MainStat);
+        Assert.Equal(352.8m, relic.MainStatValue);
+        Assert.Equal(
+            "https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/icon/relic/102_1.png",
+            relic.ImageUrl);
+        var character = Assert.Single(result.Characters);
+        Assert.Equal("1101", character.Id);
+        Assert.Equal("Bronya", character.Name);
+        Assert.Equal(
+            "https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/image/character_portrait/1101.png",
+            character.ImageUrl);
         Assert.Equal(
             [
                 new RelicSubstat(RelicStat.FlatDefense, 16m),

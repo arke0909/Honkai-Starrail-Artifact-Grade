@@ -87,3 +87,45 @@ public static class RelicCatalog
 
     public static IReadOnlyList<CatalogItem<RelicMainStat>> MainStatsFor(RelicSlot slot) => MainStats[slot];
 }
+
+public static class RelicMainStatValues
+{
+    private static readonly IReadOnlyDictionary<RelicMainStat, (decimal Base, decimal Step)> Growth =
+        new Dictionary<RelicMainStat, (decimal Base, decimal Step)>
+        {
+            [RelicMainStat.FlatHp] = (112.896m, 39.5136m),
+            [RelicMainStat.FlatAttack] = (56.448m, 19.7568m),
+            [RelicMainStat.HpPercent] = (6.912m, 2.4192m),
+            [RelicMainStat.AttackPercent] = (6.912m, 2.4192m),
+            [RelicMainStat.DefensePercent] = (8.64m, 3.024m),
+            [RelicMainStat.CritRate] = (5.184m, 1.8144m),
+            [RelicMainStat.CritDamage] = (10.368m, 3.6288m),
+            [RelicMainStat.OutgoingHealing] = (5.5296m, 1.9354m),
+            [RelicMainStat.EffectHitRate] = (6.912m, 2.4192m),
+            [RelicMainStat.Speed] = (4.032m, 1.4m),
+            [RelicMainStat.PhysicalDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.FireDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.IceDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.LightningDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.WindDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.QuantumDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.ImaginaryDamage] = (6.2208m, 2.1773m),
+            [RelicMainStat.BreakEffect] = (10.368m, 3.6288m),
+            [RelicMainStat.EnergyRegenerationRate] = (3.1104m, 1.0886m)
+        };
+
+    public static decimal Calculate(RelicMainStat mainStat, int level)
+    {
+        if (level is < 0 or > 15)
+        {
+            throw new ArgumentOutOfRangeException(nameof(level), "강화 단계는 0부터 15 사이여야 합니다.");
+        }
+
+        if (!Growth.TryGetValue(mainStat, out var growth))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mainStat), "지원하지 않는 주옵션입니다.");
+        }
+
+        return growth.Base + growth.Step * level;
+    }
+}

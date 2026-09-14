@@ -18,7 +18,8 @@ public sealed class RelicBatchScorerTests
                 15,
                 RelicSlot.Head,
                 RelicMainStat.FlatHp,
-                [new RelicSubstat(RelicStat.CritRate, 6.48m)]),
+                [new RelicSubstat(RelicStat.CritRate, 6.48m)],
+                705.6m),
             new ImportedRelic(
                 "second",
                 "Second relic",
@@ -28,7 +29,8 @@ public sealed class RelicBatchScorerTests
                 15,
                 RelicSlot.Hands,
                 RelicMainStat.FlatAttack,
-                [new RelicSubstat(RelicStat.CritDamage, 12.96m)])
+                [new RelicSubstat(RelicStat.CritDamage, 12.96m)],
+                352.8m)
         };
 
         var results = RelicBatchScorer.Calculate(ScoringProfileId.Critical, relics);
@@ -51,7 +53,8 @@ public sealed class RelicBatchScorerTests
             12,
             RelicSlot.Head,
             RelicMainStat.FlatHp,
-            [new RelicSubstat(RelicStat.CritRate, 6.48m)]);
+            [new RelicSubstat(RelicStat.CritRate, 6.48m)],
+            null);
 
         var result = Assert.Single(RelicBatchScorer.Calculate(
             ScoringProfileId.Critical,

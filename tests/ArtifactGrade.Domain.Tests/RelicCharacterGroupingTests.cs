@@ -16,6 +16,7 @@ public sealed class RelicCharacterGroupingTests
             [bronyaHead, unequipped, bronyaHands, seeleHead]);
 
         Assert.Equal(["Bronya", "Seele", null], groups.Select(group => group.CharacterName));
+        Assert.Equal(["bronya", "seele", null], groups.Select(group => group.CharacterId));
         Assert.Equal([bronyaHead, bronyaHands], groups[0].Relics);
         Assert.Equal([seeleHead], groups[1].Relics);
         Assert.Equal([unequipped], groups[2].Relics);
@@ -31,5 +32,7 @@ public sealed class RelicCharacterGroupingTests
         15,
         RelicSlot.Head,
         RelicMainStat.FlatHp,
-        [new RelicSubstat(RelicStat.CritRate, 3.24m)]);
+        [new RelicSubstat(RelicStat.CritRate, 3.24m)],
+        705.6m,
+        EquippedCharacterId: equippedBy?.ToLowerInvariant());
 }
