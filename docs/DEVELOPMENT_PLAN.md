@@ -177,9 +177,9 @@ docker-compose.yml
 | 3. 개발 과정과 사용법 문서화 | 이 문서의 작업 기록·트러블슈팅과 README 유지 | O - 설치·실행·코드·트러블슈팅 작성 |
 | 4. 직접 사용 및 후기 | 실제 유물 10개 이상 평가 후 장단점과 개선점 작성 | X - 샘플 1개 검증, 실제 유물 10개 사용 전 |
 | 5. 블로그 또는 SNS 게시 | 시연 자료와 배포 링크 게시 후 URL 기록 | X - 게시 전 |
-| 6. GitHub 정리 및 업로드 | 저장소 구조, README, 라이선스, 배포 링크 정리 및 푸시 | X - 업로드 확인 전 |
+| 6. GitHub 정리 및 업로드 | 저장소 구조, README, 라이선스, 배포 링크 정리 및 푸시 | O - `codex/csharp-relic-scorer` 브랜치 업로드 완료 |
 
-현재 충족 점수는 8점이며, 최종 목표는 6개 항목 모두 충족하여 24점을 확보하는 것이다. 상태는 실제 결과와 증거를 확인한 경우에만 O로 변경한다.
+현재 충족 점수는 12점이며, 최종 목표는 6개 항목 모두 충족하여 24점을 확보하는 것이다. 상태는 실제 결과와 증거를 확인한 경우에만 O로 변경한다.
 
 ## 12. 작업 기록
 
@@ -255,6 +255,15 @@ docker-compose.yml
 - 문제와 해결: 브라우저 재접속 시 Blazor WebAssembly 로딩이 끝나기 전에 확인하면 연결 실패 또는 로딩 화면만 보였다. 서버 수신 상태와 애플리케이션 로딩 완료 후 DOM을 다시 확인했다.
 - 다음 작업: Docker가 설치된 환경에서 `redis-integration.ps1`을 실행하고 외부 배포 주소를 확정한다.
 
+### 2026-09-14 / GitHub 브랜치 업로드
+
+- 목적: 결과물을 다른 사람이 확인하고 실행할 수 있도록 GitHub에 정리해 업로드한다.
+- 변경 내용 및 파일: `codex/csharp-relic-scorer` 브랜치를 생성하고 구현, 테스트, 실행·배포 설정, README, 개발 기록, 블로그 초안을 커밋했다.
+- 결정과 이유: 기본 브랜치를 바로 변경하지 않고 검토 가능한 기능 브랜치로 올려 기존 저장소 이력을 보존했다.
+- 검증 방법 및 결과: 커밋 `280c6c8` 생성과 원격 추적 브랜치 설정을 확인했다. 업로드 주소는 `https://github.com/arke0909/Honkai-Starrail-Artifact-Grade/tree/codex/csharp-relic-scorer`다.
+- 문제와 해결: 샌드박스가 `.git` 참조 생성을 제한하여 승인된 Git 작업으로 브랜치 생성, 스테이징, 커밋, 푸시를 수행했다.
+- 다음 작업: Pull Request를 검토·병합하고 외부 배포와 게시를 진행한다.
+
 ## 13. 트러블슈팅
 
 ### NuGet.Config 접근 거부 및 복원 지연
@@ -321,7 +330,7 @@ docker-compose.yml
 
 ## 15. 게시 및 배포 정보
 
-- GitHub 저장소: https://github.com/arke0909/Honkai-Starrail-Artifact-Grade (로컬 변경 업로드 전)
+- GitHub 저장소: https://github.com/arke0909/Honkai-Starrail-Artifact-Grade/tree/codex/csharp-relic-scorer
 - 배포 사이트: 클라이언트·API·Redis 배포 후 링크 기록
 - 개발 블로그 또는 SNS: 게시 후 링크 기록
 - 최종 점검일: 2026-09-14 (로컬 기능 검증 기준)
