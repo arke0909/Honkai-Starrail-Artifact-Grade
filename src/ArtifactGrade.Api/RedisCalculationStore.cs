@@ -7,10 +7,12 @@ using StackExchange.Redis;
 
 namespace ArtifactGrade.Api;
 
-public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache
+public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache, ICharacterProfileCache
 {
     private const string RecentCalculationsKey = "artifact-grade:calculations:recent";
     private const string CalculationCountKey = "artifact-grade:calculations:count";
+    private const string CharacterProfilesKey =
+        "artifact-grade:profiles:starrailscore:fb8268bc6345c52501bd4ec23f8df89b26497e0a";
     private readonly string _connectionString;
     private readonly ILogger<RedisCalculationStore> _logger;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
@@ -42,6 +44,25 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache
         await database.StringIncrementAsync(CalculationCountKey);
     }
 
+    public async Task SaveCharacterBatchAsync(
+        CharacterScoringProfile profile,
+        IReadOnlyList<ScoredImportedRelic> scores,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var database = (await GetConnectionAsync()).GetDatabase();
+        var record = new StoredCharacterCalculationBatch(
+            DateTimeOffset.UtcNow,
+            profile.CharacterId,
+            profile.CharacterName,
+            scores);
+        var json = JsonSerializer.Serialize(record, _jsonOptions);
+
+        await database.ListLeftPushAsync(RecentCalculationsKey, json);
+        await database.ListTrimAsync(RecentCalculationsKey, 0, 19);
+        await database.StringIncrementAsync(CalculationCountKey, scores.Count);
+    }
+
     public async Task<TimeSpan> PingAsync()
     {
         var database = (await GetConnectionAsync()).GetDatabase();
@@ -65,6 +86,24 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache
         cancellationToken.ThrowIfCancellationRequested();
         var database = (await GetConnectionAsync()).GetDatabase();
         await database.StringSetAsync(ImportCacheKey(uid), json, expiry);
+    }
+
+    public async Task<string?> GetCharacterProfilesAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var database = (await GetConnectionAsync()).GetDatabase();
+        var value = await database.StringGetAsync(CharacterProfilesKey);
+        return value.HasValue ? value.ToString() : null;
+    }
+
+    public async Task SetCharacterProfilesAsync(
+        string json,
+        TimeSpan expiry,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var database = (await GetConnectionAsync()).GetDatabase();
+        await database.StringSetAsync(CharacterProfilesKey, json, expiry);
     }
 
     private static string ImportCacheKey(string uid)
@@ -129,4 +168,10 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache
         DateTimeOffset CalculatedAt,
         ScoreRequest Request,
         ScoreResult Result);
+
+    private sealed record StoredCharacterCalculationBatch(
+        DateTimeOffset CalculatedAt,
+        string CharacterId,
+        string CharacterName,
+        IReadOnlyList<ScoredImportedRelic> Scores);
 }

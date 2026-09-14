@@ -6,6 +6,7 @@ using System.Threading.RateLimiting;
 using ArtifactGrade.Api;
 using ArtifactGrade.Domain;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,6 +75,8 @@ builder.Services.AddSingleton(provider => new RedisCalculationStore(
     provider.GetRequiredService<ILogger<RedisCalculationStore>>()));
 builder.Services.AddSingleton<IRelicImportCache>(provider =>
     provider.GetRequiredService<RedisCalculationStore>());
+builder.Services.AddSingleton<ICharacterProfileCache>(provider =>
+    provider.GetRequiredService<RedisCalculationStore>());
 builder.Services.AddHttpClient<MihomoRelicImporter>(client =>
 {
     client.BaseAddress = new Uri(
@@ -81,6 +84,19 @@ builder.Services.AddHttpClient<MihomoRelicImporter>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Honkai-Starrail-Artifact-Grade/1.0");
 });
+builder.Services.AddHttpClient("StarRailScore", client =>
+{
+    client.BaseAddress = new Uri(
+        builder.Configuration["StarRailScore:BaseUrl"]
+        ?? "https://raw.githubusercontent.com/Mar-7th/StarRailScore/fb8268bc6345c52501bd4ec23f8df89b26497e0a/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.MaxResponseContentBufferSize = 2 * 1024 * 1024;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Honkai-Starrail-Artifact-Grade/1.0");
+});
+builder.Services.AddSingleton(provider => new StarRailScoreProfileProvider(
+    provider.GetRequiredService<IHttpClientFactory>().CreateClient("StarRailScore"),
+    provider.GetRequiredService<ICharacterProfileCache>(),
+    provider.GetRequiredService<ILogger<StarRailScoreProfileProvider>>()));
 
 var app = builder.Build();
 
@@ -135,6 +151,71 @@ app.MapPost("/api/scores/batch", (RelicBatchScoreRequest request) =>
 
     return Results.Ok(RelicBatchScorer.Calculate(request.Profile, request.Relics));
 });
+
+app.MapPost("/api/scores/character-batch", async (
+    CharacterRelicBatchScoreRequest request,
+    StarRailScoreProfileProvider profileProvider,
+    RedisCalculationStore historyStore,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
+{
+    if (request.Validate() is { } validationError)
+    {
+        return Results.BadRequest(new { message = validationError });
+    }
+
+    try
+    {
+        var profile = await profileProvider.GetAsync(
+            request.CharacterId.Trim(),
+            request.CharacterName.Trim(),
+            cancellationToken);
+        if (profile is null)
+        {
+            return Results.NotFound(new
+            {
+                message = $"{request.CharacterName}의 전용 평가 데이터가 아직 없습니다. 임의의 점수는 표시하지 않습니다."
+            });
+        }
+
+        var scores = RelicBatchScorer.Calculate(profile, request.Relics);
+        try
+        {
+            await historyStore.SaveCharacterBatchAsync(profile, scores, cancellationToken);
+            return Results.Ok(new CharacterRelicBatchScoreResponse(profile, scores, true, null));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Redis에 캐릭터별 계산 기록을 저장하지 못했습니다.");
+            return Results.Ok(new CharacterRelicBatchScoreResponse(
+                profile,
+                scores,
+                false,
+                "점수는 정상 계산했지만 Redis에 최근 기록을 저장하지 못했습니다."));
+        }
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (TaskCanceledException)
+    {
+        return Results.Json(
+            new { message = "캐릭터별 평가 기준을 불러오는 시간이 초과되었습니다." },
+            statusCode: StatusCodes.Status504GatewayTimeout);
+    }
+    catch (Exception exception) when (exception is HttpRequestException or JsonException)
+    {
+        logger.LogWarning(exception, "캐릭터별 유물 평가 기준을 불러오지 못했습니다.");
+        return Results.Json(
+            new { message = "캐릭터별 평가 기준에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}).WithMetadata(new RequestSizeLimitAttribute(1024 * 1024));
 
 app.MapGet("/api/import/uid/{uid}", async (
     string uid,

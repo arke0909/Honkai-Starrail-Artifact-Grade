@@ -1,22 +1,21 @@
 @page "/"
 @inject HttpClient Http
-@inject IJSRuntime JavaScript
 
 <PageTitle>개척자의 유물 감정소</PageTitle>
 
 <section class="hero" aria-labelledby="page-title">
     <div>
         <p class="eyebrow">HONKAI: STAR RAIL · RELIC SCORER</p>
-        <h1 id="page-title">이 유물, 정말 강화할 가치가 있을까?</h1>
+        <h1 id="page-title">이 유물, 이 캐릭터에게 정말 좋은 걸까?</h1>
         <p class="hero-copy">
-            5성 유물의 부옵션을 입력하면 최고 증가량 대비 효율과 캐릭터 육성 방향을 반영해
-            점수와 등급을 계산합니다.
+            UID 또는 Scanner JSON으로 유물을 불러오면 장착 캐릭터의 HP·공격력·방어력 스케일과
+            치명타·속도·격파·효과 명중 등 12개 옵션 가중치를 자동 적용합니다.
         </p>
     </div>
     <aside class="formula-note">
         <span>계산 기준</span>
-        <strong>유효 증가량 × 가중치 × 10</strong>
-        <small>점수 근거를 스탯별로 모두 공개합니다.</small>
+        <strong>주옵션 50점 + 부옵션 50점 기준</strong>
+        <small>모든 옵션의 적합도, 가중치와 점수 기여도를 함께 공개합니다.</small>
     </aside>
 </section>
 
@@ -40,7 +39,7 @@
                 <input id="uid-input" inputmode="numeric" maxlength="9" placeholder="UID 숫자 9자리" disabled="@IsImportBusy"
                        @bind="_uid" @bind:event="oninput" />
                 <button class="secondary-button" type="button" disabled="@IsImportBusy" @onclick="ImportUidAsync">
-                    UID 불러오기
+                    @(_isImporting ? "불러오는 중..." : "UID 불러오기")
                 </button>
             </div>
         </div>
@@ -95,7 +94,7 @@
                     {
                         <button class="@CharacterTabClass(group)" type="button"
                                 aria-pressed="@(group.CharacterId == _selectedCharacterId ? "true" : "false")"
-                                disabled="@IsImportBusy" @onclick="() => SelectCharacter(group)">
+                                disabled="@IsImportBusy" @onclick="() => SelectCharacterAsync(group)">
                             <strong>@CharacterDisplayName(group)</strong>
                             <span>@(group.Relics.Count)개</span>
                         </button>
@@ -105,21 +104,69 @@
 
             @if (SelectedCharacterGroup is { } selectedCharacter)
             {
-                <div class="loadout-toolbar" aria-label="@($"{CharacterDisplayName(selectedCharacter)} 유물 평가 설정")">
-                    <label class="field">
-                        <span>일괄 평가 프로필</span>
-                        <select @bind="_input.Profile" disabled="@IsImportBusy">
-                            @foreach (var profile in RelicCatalog.Profiles)
+                <section class="character-evaluation" aria-labelledby="character-profile-title">
+                    <div class="character-evaluation-heading">
+                        <div>
+                            <span class="profile-eyebrow">AUTO CHARACTER PROFILE</span>
+                            <h3 id="character-profile-title">
+                                @if (_isBatchScoring)
+                                {
+                                    <span>캐릭터 전용 기준 확인 중...</span>
+                                }
+                                else if (_characterProfile is not null)
+                                {
+                                    <span>@_characterProfile.Archetype</span>
+                                }
+                                else
+                                {
+                                    <span>캐릭터 전용 평가 없음</span>
+                                }
+                            </h3>
+                        </div>
+                        @if (_characterProfile is not null)
+                        {
+                            <span class="profile-source">@_characterProfile.Source</span>
+                        }
+                    </div>
+
+                    @if (_characterProfile is not null)
+                    {
+                        <p class="profile-description">
+                            아래 12개 옵션을 모두 캐릭터별 가중치로 판정합니다. 핵심 옵션만이 아니라
+                            유효·보조·비유효 옵션까지 한 번에 비교할 수 있습니다.
+                        </p>
+                        <div class="stat-weight-grid" aria-label="캐릭터 유효 옵션 전체">
+                            @foreach (var statWeight in _characterProfile.StatWeights
+                                .OrderByDescending(item => item.Weight)
+                                .ThenBy(item => item.Stat))
                             {
-                                <option value="@profile.Value">@profile.Name</option>
+                                <div class="stat-weight @PriorityClass(statWeight.Priority)">
+                                    <span>@StatsById[statWeight.Stat].Name@(StatsById[statWeight.Stat].Unit)</span>
+                                    <b>×@statWeight.Weight.ToString("0.0")</b>
+                                    <small>@PriorityLabel(statWeight.Priority)</small>
+                                </div>
                             }
-                        </select>
-                    </label>
-                    <button class="primary-button compact-button" type="button" disabled="@IsImportBusy"
-                            @onclick="CalculateImportedRelicsAsync">
-                        @(_isBatchScoring ? "계산 중..." : "전체 점수 계산")
-                    </button>
-                </div>
+                        </div>
+                        <p class="profile-caveat">
+                            이 점수는 유물 비교용 가중치입니다. 파티 버프, 속도 구간, 치명타 초과와 전투 순환은 별도 확인이 필요합니다.
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(_redisWarning))
+                        {
+                            <p class="profile-storage-status warning" role="status">@_redisWarning</p>
+                        }
+                        else if (_redisSaved)
+                        {
+                            <p class="profile-storage-status">✓ 최근 계산 기록을 Redis에 저장했습니다.</p>
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_scoreError))
+                    {
+                        <div class="message warning-message" role="status">
+                            <strong>자동 평가는 표시하지 않습니다.</strong>
+                            <p>@_scoreError</p>
+                        </div>
+                    }
+                </section>
 
                 <div class="loadout-board">
                     <article class="character-showcase">
@@ -157,6 +204,7 @@
                         @foreach (var relic in selectedCharacter.Relics.OrderBy(item => item.Slot))
                         {
                             var scored = _batchScores.FirstOrDefault(item => item.Relic.Key == relic.Key);
+                            var mainStat = scored?.Result.MainStat;
                             <article class="relic-card">
                                 <div class="relic-card-media">
                                     @if (relic.ImageUrl is { } relicImageUrl)
@@ -174,11 +222,41 @@
                                 <div class="relic-card-content">
                                     <strong>@relic.Name</strong>
                                     <span class="relic-set">@relic.SetName · +@relic.Level</span>
-                                    <div class="main-stat-value">
+                                    <div class="@MainStatClass(mainStat?.Priority)">
                                         <span>주옵션 계수</span>
                                         <b>@RelicMainStatSummary(relic)</b>
+                                        @if (mainStat is not null)
+                                        {
+                                            <small>
+                                                @PriorityLabel(mainStat.Priority) · ×@mainStat.Weight.ToString("0.0") · +@mainStat.Score.ToString("0.0")점
+                                            </small>
+                                        }
                                     </div>
-                                    <p>@RelicSubstatSummary(relic)</p>
+
+                                    <ul class="relic-substat-list" aria-label="부옵션별 유효도와 기여도">
+                                        @foreach (var substat in relic.Substats)
+                                        {
+                                            var statWeight = _characterProfile?.StatWeights
+                                                .FirstOrDefault(item => item.Stat == substat.Stat);
+                                            var contribution = scored?.Result.Contributions
+                                                .FirstOrDefault(item => item.Stat == substat.Stat);
+                                            <li class="@SubstatClass(statWeight?.Priority)">
+                                                <span>@StatsById[substat.Stat].Name @substat.Value.ToString("0.##")@StatsById[substat.Stat].Unit</span>
+                                                @if (statWeight is not null)
+                                                {
+                                                    <small>@PriorityLabel(statWeight.Priority) · ×@statWeight.Weight.ToString("0.0")</small>
+                                                }
+                                                else
+                                                {
+                                                    <small>평가 기준 없음</small>
+                                                }
+                                                @if (contribution is not null)
+                                                {
+                                                    <b>+@contribution.Score.ToString("0.0")</b>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
 
                                     <div class="relic-card-footer">
                                         @if (scored is { Result.IsValid: true })
@@ -189,11 +267,14 @@
                                         {
                                             <b class="relic-score invalid-score">계산 불가</b>
                                         }
+                                        else if (_isBatchScoring)
+                                        {
+                                            <span class="score-pending">자동 계산 중...</span>
+                                        }
                                         else
                                         {
-                                            <span class="score-pending">점수 계산 전</span>
+                                            <span class="score-pending">캐릭터 전용 평가 없음</span>
                                         }
-                                        <button class="text-button" type="button" @onclick="() => ApplyImportedRelic(relic)">입력 적용</button>
                                     </div>
 
                                     @if (scored is { Result.IsValid: false })
@@ -215,216 +296,18 @@
         {
             <p class="import-status" role="status">@_importStatus</p>
         }
-
     }
 </section>
 
-<div class="calculator-grid">
-    <section class="panel input-panel" aria-labelledby="input-title">
-        <div class="panel-heading">
-            <div>
-                <span class="step">STEP 01</span>
-                <h2 id="input-title">유물 정보 입력</h2>
-            </div>
-            <button class="text-button" type="button" disabled="@_isBatchScoring" @onclick="ResetAsync">전체 초기화</button>
-        </div>
-
-        <div class="field-grid">
-            <label class="field">
-                <span>평가 프로필</span>
-                <select @bind="_input.Profile" disabled="@_isBatchScoring">
-                    @foreach (var profile in RelicCatalog.Profiles)
-                    {
-                        <option value="@profile.Value">@profile.Name</option>
-                    }
-                </select>
-                <small>장착할 캐릭터의 주요 성장 방식과 가까운 항목을 선택하세요.</small>
-            </label>
-
-            <label class="field">
-                <span>강화 단계</span>
-                <select @bind="_input.Level">
-                    @for (var level = 0; level <= 15; level++)
-                    {
-                        <option value="@level">+@level</option>
-                    }
-                </select>
-                <small>현재 유물 화면에 표시된 강화 단계를 선택하세요.</small>
-            </label>
-
-            <label class="field">
-                <span>유물 부위</span>
-                <select @bind="_input.Slot" @bind:after="UpdateMainStatOptions">
-                    @foreach (var slot in RelicCatalog.Slots)
-                    {
-                        <option value="@slot.Value">@slot.Name</option>
-                    }
-                </select>
-                <small>장착 위치에 따라 선택 가능한 주옵션이 달라집니다.</small>
-            </label>
-
-            <label class="field">
-                <span>주옵션</span>
-                <select @bind="_input.MainStat">
-                    @foreach (var mainStat in RelicCatalog.MainStatsFor(_input.Slot))
-                    {
-                        <option value="@mainStat.Value">@mainStat.Name@(mainStat.Unit)</option>
-                    }
-                </select>
-                <small>주옵션은 부옵션 점수와 분리하여 유물 정보를 검증합니다.</small>
-            </label>
-        </div>
-
-        <div class="substat-header">
-            <div>
-                <span class="step">STEP 02</span>
-                <h3>부옵션</h3>
-            </div>
-            <span class="optional">1~4개 입력</span>
-        </div>
-
-        <div class="substat-list">
-            @for (var index = 0; index < _input.Substats.Count; index++)
-            {
-                var row = _input.Substats[index];
-                <div class="substat-row">
-                    <span class="row-number">@(index + 1)</span>
-                    <label>
-                        <span class="sr-only">부옵션 @(index + 1) 종류</span>
-                        <select @bind="row.Stat">
-                            @foreach (var stat in RelicCatalog.Substats)
-                            {
-                                <option value="@stat.Value">@stat.Name@(stat.Unit)</option>
-                            }
-                        </select>
-                    </label>
-                    <label class="value-field">
-                        <span class="sr-only">부옵션 @(index + 1) 수치</span>
-                        <input type="number" min="0" step="0.01" placeholder="수치" @bind="row.Value" @bind:event="oninput" />
-                        <span>@StatsById[row.Stat].Unit</span>
-                    </label>
-                </div>
-            }
-        </div>
-
-        @if (_messages.Count > 0)
-        {
-            <div class="message error-message" role="alert">
-                <strong>입력 내용을 확인해 주세요.</strong>
-                <ul>
-                    @foreach (var message in _messages)
-                    {
-                        <li>@message</li>
-                    }
-                </ul>
-            </div>
-        }
-
-        <button class="primary-button" type="button" disabled="@_isCalculating" @onclick="CalculateAsync">
-            @if (_isCalculating)
-            {
-                <span>계산 중...</span>
-            }
-            else
-            {
-                <span>유물 점수 계산하기</span>
-                <span aria-hidden="true">→</span>
-            }
-        </button>
-    </section>
-
-    <section class="panel result-panel" aria-labelledby="result-title">
-        <div class="panel-heading">
-            <div>
-                <span class="step">RESULT</span>
-                <h2 id="result-title">감정 결과</h2>
-            </div>
-            @if (_submission is not null)
-            {
-                <button class="text-button" type="button" @onclick="CopyResultAsync">결과 복사</button>
-            }
-        </div>
-
-        @if (_submission is null)
-        {
-            <div class="empty-result">
-                <div class="relic-orbit" aria-hidden="true"><span>✦</span></div>
-                <h3>아직 감정할 유물이 없습니다.</h3>
-                <p>왼쪽에서 프로필과 부옵션을 입력하면 결과가 여기에 표시됩니다.</p>
-            </div>
-        }
-        else
-        {
-            <div class="score-card grade-@_submission.Result.Grade.ToLowerInvariant()">
-                <div class="grade-block">
-                    <span>유물 등급</span>
-                    <strong>@_submission.Result.Grade</strong>
-                </div>
-                <div class="score-block">
-                    <span>@ProfilesById[_resultProfile!.Value].Name 프로필</span>
-                    <strong>@_submission.Result.Score.ToString("0.0")<small>점</small></strong>
-                </div>
-            </div>
-
-            <div class="grade-scale" aria-label="등급 기준">
-                <span>C</span><span>B 35</span><span>A 45</span><span>S 55</span><span>SS 65</span><span>SSS 75</span>
-            </div>
-
-            <div class="breakdown">
-                <div class="substat-header">
-                    <h3>스탯별 기여도</h3>
-                    <span class="optional">가중치 적용</span>
-                </div>
-                @foreach (var contribution in _submission.Result.Contributions)
-                {
-                    <div class="contribution-row">
-                        <div>
-                            <strong>@StatsById[contribution.Stat].Name</strong>
-                            <small>가중치 ×@contribution.Weight.ToString("0.0")</small>
-                        </div>
-                        <span>+@contribution.Score.ToString("0.0")</span>
-                    </div>
-                }
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(_submission.Warning))
-            {
-                <div class="message warning-message" role="status">
-                    <strong>Redis 저장 알림</strong>
-                    <p>@_submission.Warning</p>
-                </div>
-            }
-            else if (_submission.RedisSaved)
-            {
-                <p class="saved-message">✓ 최근 계산 기록이 Redis에 저장되었습니다.</p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(_copyMessage))
-            {
-                <p class="copy-message" role="status">@_copyMessage</p>
-            }
-        }
-    </section>
-</div>
-
-<section class="guide-strip" aria-label="사용 안내">
-    <article><span>01</span><div><strong>프로필 선택</strong><p>캐릭터의 주요 성장 방식을 고릅니다.</p></div></article>
-    <article><span>02</span><div><strong>수치 그대로 입력</strong><p>% 기호 없이 게임에 보이는 숫자만 적습니다.</p></div></article>
-    <article><span>03</span><div><strong>근거까지 비교</strong><p>총점뿐 아니라 어떤 스탯이 기여했는지 확인합니다.</p></div></article>
-</section>
-
 @code {
-    private const string StorageKey = "artifact-grade:input";
     private const string UnequippedLabel = "미장착";
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions =
         new(System.Text.Json.JsonSerializerDefaults.Web)
-        {
-            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
-        };
+    {
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
     private static readonly IReadOnlyDictionary<RelicStat, CatalogItem<RelicStat>> StatsById =
         RelicCatalog.Substats.ToDictionary(item => item.Value);
-    private static readonly IReadOnlyDictionary<ScoringProfileId, CatalogItem<ScoringProfileId>> ProfilesById =
-        RelicCatalog.Profiles.ToDictionary(item => item.Value);
     private static readonly IReadOnlyDictionary<RelicSlot, CatalogItem<RelicSlot>> SlotsById =
         RelicCatalog.Slots.ToDictionary(item => item.Value);
     private static readonly IReadOnlyDictionary<RelicMainStat, CatalogItem<RelicMainStat>> MainStatsById =
@@ -433,22 +316,20 @@
             .DistinctBy(item => item.Value)
             .ToDictionary(item => item.Value);
 
-    private CalculatorInput _input = CalculatorInput.CreateDefault();
-    private ScoreSubmissionResponse? _submission;
     private RelicImportResponse? _importResult;
+    private CharacterScoringProfile? _characterProfile;
     private readonly List<ScoredImportedRelic> _batchScores = [];
     private readonly HashSet<string> _characterFallbacksInUse = [];
     private readonly HashSet<string> _characterImagesUnavailable = [];
-    private ScoringProfileId? _resultProfile;
-    private readonly List<string> _messages = [];
     private string _uid = string.Empty;
     private string? _selectedCharacterId;
     private string? _importError;
+    private string? _scoreError;
+    private string? _redisWarning;
     private string? _importStatus;
     private bool _isImporting;
     private bool _isBatchScoring;
-    private bool _isCalculating;
-    private string? _copyMessage;
+    private bool _redisSaved;
     private bool IsImportBusy => _isImporting || _isBatchScoring;
     private IReadOnlyList<RelicCharacterGroup> CharacterGroups => _importResult is null
         ? []
@@ -457,41 +338,6 @@
         group.CharacterId == _selectedCharacterId);
     private ImportedCharacter? SelectedCharacterInfo => _importResult?.Characters.FirstOrDefault(character =>
         character.Id == _selectedCharacterId);
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-        {
-            return;
-        }
-
-        var saved = await JavaScript.InvokeAsync<string?>("localStorage.getItem", StorageKey);
-        if (!string.IsNullOrWhiteSpace(saved))
-        {
-            try
-            {
-                var restored = System.Text.Json.JsonSerializer.Deserialize<PersistedState>(saved, JsonOptions);
-                if (!IsValidPersistedState(restored))
-                {
-                    throw new System.Text.Json.JsonException("저장된 계산 형식이 올바르지 않습니다.");
-                }
-
-                _input = restored!.Input;
-                _submission = restored.Submission;
-                _resultProfile = restored.Profile;
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                _input = CalculatorInput.CreateDefault();
-                _submission = null;
-                _resultProfile = null;
-                _messages.Add("손상된 이전 입력을 초기화했습니다.");
-                await JavaScript.InvokeVoidAsync("localStorage.removeItem", StorageKey);
-            }
-
-            StateHasChanged();
-        }
-    }
 
     private async Task ImportUidAsync()
     {
@@ -509,6 +355,8 @@
 
         _isImporting = true;
         _importError = null;
+        _scoreError = null;
+        _redisWarning = null;
         _importStatus = null;
 
         try
@@ -522,6 +370,7 @@
 
             var result = await response.Content.ReadFromJsonAsync<RelicImportResponse>(JsonOptions);
             SetImportResult(result);
+            await CalculateSelectedCharacterAsync();
         }
         catch (HttpRequestException)
         {
@@ -546,6 +395,8 @@
 
         const long maximumFileBytes = 10 * 1024 * 1024;
         _importError = null;
+        _scoreError = null;
+        _redisWarning = null;
         _importStatus = null;
 
         if (eventArgs.File.Size > maximumFileBytes)
@@ -570,6 +421,7 @@
 
             var result = await response.Content.ReadFromJsonAsync<RelicImportResponse>(JsonOptions);
             SetImportResult(result);
+            await CalculateSelectedCharacterAsync();
         }
         catch (IOException)
         {
@@ -602,13 +454,14 @@
         _characterImagesUnavailable.Clear();
         var firstCharacter = CharacterGroups.FirstOrDefault();
         _selectedCharacterId = firstCharacter?.CharacterId;
+        _characterProfile = null;
         _batchScores.Clear();
         _importStatus = result.Relics.Count > 0
-            ? $"5성 유물 {result.Relics.Count}개를 불러왔습니다."
+            ? $"5성 유물 {result.Relics.Count}개를 불러왔습니다. 선택 캐릭터 기준으로 자동 평가합니다."
             : "가져올 수 있는 5성 유물이 없습니다.";
     }
 
-    private void SelectCharacter(RelicCharacterGroup group)
+    private async Task SelectCharacterAsync(RelicCharacterGroup group)
     {
         if (IsImportBusy)
         {
@@ -616,6 +469,79 @@
         }
 
         _selectedCharacterId = group.CharacterId;
+        await CalculateSelectedCharacterAsync();
+    }
+
+    private async Task CalculateSelectedCharacterAsync()
+    {
+        _characterProfile = null;
+        _batchScores.Clear();
+        _scoreError = null;
+        _redisWarning = null;
+        _redisSaved = false;
+
+        if (SelectedCharacterGroup is not { } group)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(group.CharacterId))
+        {
+            _scoreError = "미장착 유물은 기준 캐릭터가 없어 점수를 임의로 계산하지 않습니다.";
+            return;
+        }
+
+        _isBatchScoring = true;
+        try
+        {
+            foreach (var relicChunk in group.Relics.Chunk(300))
+            {
+                var request = new CharacterRelicBatchScoreRequest(
+                    group.CharacterId,
+                    CharacterDisplayName(group),
+                    relicChunk);
+                using var response = await Http.PostAsJsonAsync(
+                    "api/scores/character-batch",
+                    request,
+                    JsonOptions);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _scoreError = await ReadApiErrorAsync(response);
+                    _batchScores.Clear();
+                    return;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<CharacterRelicBatchScoreResponse>(JsonOptions);
+                if (result is null)
+                {
+                    _scoreError = "캐릭터별 계산 결과를 읽지 못했습니다.";
+                    _batchScores.Clear();
+                    return;
+                }
+
+                _characterProfile = result.Profile;
+                _batchScores.AddRange(result.Scores);
+                _redisSaved |= result.RedisSaved;
+                _redisWarning ??= result.Warning;
+            }
+
+            _importStatus = $"{CharacterDisplayName(group)}의 {_characterProfile!.Archetype} 기준으로 "
+                + $"유물 {_batchScores.Count}개를 자동 계산했습니다.";
+        }
+        catch (HttpRequestException)
+        {
+            _scoreError = "캐릭터별 계산 서버에 연결하지 못했습니다.";
+            _batchScores.Clear();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _scoreError = "캐릭터별 계산 응답 형식을 읽지 못했습니다.";
+            _batchScores.Clear();
+        }
+        finally
+        {
+            _isBatchScoring = false;
+        }
     }
 
     private string? CharacterImageUrl(ImportedCharacter character)
@@ -649,102 +575,24 @@
     private static string CharacterDisplayName(RelicCharacterGroup group) =>
         group.CharacterName ?? UnequippedLabel;
 
-    private void ApplyImportedRelic(ImportedRelic relic)
+    private static string PriorityLabel(CharacterStatPriority priority) => priority switch
     {
-        _input.Level = relic.Level;
-        _input.Slot = relic.Slot;
-        _input.MainStat = relic.MainStat;
-        _input.Substats = relic.Substats
-            .Select(substat => new SubstatInput { Stat = substat.Stat, Value = substat.Value })
-            .ToList();
+        CharacterStatPriority.Core => "핵심",
+        CharacterStatPriority.Useful => "유효",
+        CharacterStatPriority.Secondary => "보조",
+        _ => "비유효"
+    };
 
-        foreach (var stat in RelicCatalog.Substats)
-        {
-            if (_input.Substats.Count >= 4)
-            {
-                break;
-            }
+    private static string PriorityClass(CharacterStatPriority priority) =>
+        $"priority-{priority.ToString().ToLowerInvariant()}";
 
-            if (_input.Substats.All(row => row.Stat != stat.Value))
-            {
-                _input.Substats.Add(new SubstatInput { Stat = stat.Value });
-            }
-        }
+    private static string SubstatClass(CharacterStatPriority? priority) => priority.HasValue
+        ? $"relic-substat {PriorityClass(priority.Value)}"
+        : "relic-substat";
 
-        _submission = null;
-        _resultProfile = null;
-        _messages.Clear();
-        _copyMessage = null;
-        _importError = null;
-        _importStatus = $"{RelicLabel(relic)} 정보를 입력칸에 적용했습니다.";
-    }
-
-    private async Task CalculateImportedRelicsAsync()
-    {
-        if (IsImportBusy)
-        {
-            return;
-        }
-
-        if (_importResult?.Relics.Count is not > 0)
-        {
-            _importError = "먼저 유물을 불러와 주세요.";
-            return;
-        }
-
-        _isBatchScoring = true;
-        _importError = null;
-        _batchScores.Clear();
-        var profile = _input.Profile;
-        var relics = _importResult.Relics.ToArray();
-
-        try
-        {
-            foreach (var relicChunk in relics.Chunk(300))
-            {
-                var request = new RelicBatchScoreRequest(profile, relicChunk);
-                using var response = await Http.PostAsJsonAsync("api/scores/batch", request, JsonOptions);
-                if (!response.IsSuccessStatusCode)
-                {
-                    _importError = await ReadApiErrorAsync(response);
-                    _batchScores.Clear();
-                    return;
-                }
-
-                var scores = await response.Content.ReadFromJsonAsync<List<ScoredImportedRelic>>(JsonOptions);
-                if (scores is null)
-                {
-                    _importError = "일괄 계산 결과를 읽지 못했습니다.";
-                    _batchScores.Clear();
-                    return;
-                }
-
-                _batchScores.AddRange(scores);
-            }
-
-            var sortedScores = _batchScores
-                .OrderByDescending(score => score.Result.IsValid)
-                .ThenByDescending(score => score.Result.Score)
-                .ToArray();
-            _batchScores.Clear();
-            _batchScores.AddRange(sortedScores);
-            _importStatus = $"{ProfilesById[profile].Name} 기준으로 {_batchScores.Count}개를 계산했습니다.";
-        }
-        catch (HttpRequestException)
-        {
-            _importError = "계산 서버에 연결하지 못했습니다. API 실행 상태를 확인해 주세요.";
-            _batchScores.Clear();
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            _importError = "일괄 계산 응답 형식을 읽지 못했습니다.";
-            _batchScores.Clear();
-        }
-        finally
-        {
-            _isBatchScoring = false;
-        }
-    }
+    private static string MainStatClass(CharacterStatPriority? priority) => priority.HasValue
+        ? $"main-stat-value {PriorityClass(priority.Value)}"
+        : "main-stat-value";
 
     private static async Task<string> ReadApiErrorAsync(HttpResponseMessage response)
     {
@@ -761,12 +609,6 @@
         }
     }
 
-    private static string RelicLabel(ImportedRelic relic)
-    {
-        var equipped = string.IsNullOrWhiteSpace(relic.EquippedBy) ? UnequippedLabel : relic.EquippedBy;
-        return $"{relic.SetName} · {SlotsById[relic.Slot].Name} +{relic.Level} · {equipped}";
-    }
-
     private static string RelicMainStatSummary(ImportedRelic relic)
     {
         var mainStat = MainStatsById[relic.MainStat];
@@ -774,165 +616,6 @@
             ? $"{mainStat.Name} {relic.MainStatValue.Value:0.##}{mainStat.Unit}"
             : $"{mainStat.Name} · 수치 정보 없음";
     }
-
-    private static string RelicSubstatSummary(ImportedRelic relic)
-    {
-        var substats = string.Join(
-            " · ",
-            relic.Substats.Select(substat =>
-                $"{StatsById[substat.Stat].Name} {substat.Value:0.##}{StatsById[substat.Stat].Unit}"));
-        return $"부옵션 {substats}";
-    }
-
-    private async Task CalculateAsync()
-    {
-        _isCalculating = true;
-        _messages.Clear();
-        _copyMessage = null;
-
-        try
-        {
-            var substats = _input.Substats
-                .Where(row => row.Value.HasValue)
-                .Select(row => new RelicSubstat(row.Stat, row.Value!.Value))
-                .ToArray();
-            var request = new ScoreRequest(
-                _input.Profile,
-                _input.Level,
-                substats,
-                _input.Slot,
-                _input.MainStat);
-            var response = await Http.PostAsJsonAsync("api/scores", request, JsonOptions);
-            _submission = await response.Content.ReadFromJsonAsync<ScoreSubmissionResponse>(JsonOptions);
-
-            if (_submission is null)
-            {
-                _messages.Add("서버 응답을 읽지 못했습니다.");
-            }
-            else if (!_submission.Result.IsValid)
-            {
-                _messages.AddRange(_submission.Result.Errors);
-                _submission = null;
-                _resultProfile = null;
-            }
-            else
-            {
-                _resultProfile = request.Profile;
-                var persistedState = new PersistedState(_input, _submission, _resultProfile.Value);
-                var json = System.Text.Json.JsonSerializer.Serialize(persistedState, JsonOptions);
-                await JavaScript.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
-            }
-        }
-        catch (HttpRequestException)
-        {
-            _messages.Add("계산 서버에 연결하지 못했습니다. API 실행 상태를 확인해 주세요.");
-            _submission = null;
-            _resultProfile = null;
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            _messages.Add("계산 서버의 응답 형식을 읽지 못했습니다.");
-            _submission = null;
-            _resultProfile = null;
-        }
-        finally
-        {
-            _isCalculating = false;
-        }
-    }
-
-    private async Task ResetAsync()
-    {
-        _input = CalculatorInput.CreateDefault();
-        _submission = null;
-        _resultProfile = null;
-        _messages.Clear();
-        _copyMessage = null;
-        await JavaScript.InvokeVoidAsync("localStorage.removeItem", StorageKey);
-    }
-
-    private void UpdateMainStatOptions()
-    {
-        var availableMainStats = RelicCatalog.MainStatsFor(_input.Slot);
-        if (availableMainStats.All(item => item.Value != _input.MainStat))
-        {
-            _input.MainStat = availableMainStats[0].Value;
-        }
-    }
-
-    private async Task CopyResultAsync()
-    {
-        if (_submission is null)
-        {
-            return;
-        }
-
-        var text = $"붕괴: 스타레일 유물 점수 | {ProfilesById[_resultProfile!.Value].Name} | {_submission.Result.Grade} 등급 {_submission.Result.Score:0.0}점";
-        await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", text);
-        _copyMessage = "결과를 클립보드에 복사했습니다.";
-    }
-
-    private static bool IsValidPersistedState(PersistedState? state)
-    {
-        if (state?.Input?.Substats is not { Count: 4 }
-            || state.Submission?.Result is not { IsValid: true }
-            || !Enum.IsDefined(state.Profile)
-            || !Enum.IsDefined(state.Input.Profile)
-            || !Enum.IsDefined(state.Input.Slot)
-            || !Enum.IsDefined(state.Input.MainStat)
-            || state.Input.Level is < 0 or > 15
-            || state.Input.Profile != state.Profile
-            || state.Input.Substats.Any(row => row is null)
-            || state.Input.Substats.Any(row => !Enum.IsDefined(row.Stat))
-            || state.Submission.Result.Grade is not ("C" or "B" or "A" or "S" or "SS" or "SSS")
-            || state.Submission.Result.Contributions is null
-            || state.Submission.Result.Contributions.Any(contribution => contribution is null)
-            || state.Submission.Result.Contributions.Any(contribution => !Enum.IsDefined(contribution.Stat))
-            || state.Submission.Result.Contributions.Count != state.Input.Substats.Count(row => row.Value.HasValue)
-            || state.Submission.Result.Score != state.Submission.Result.Contributions.Sum(contribution => contribution.Score))
-        {
-            return false;
-        }
-
-        return RelicCatalog.MainStatsFor(state.Input.Slot)
-            .Any(item => item.Value == state.Input.MainStat);
-    }
-
-    private sealed class CalculatorInput
-    {
-        public ScoringProfileId Profile { get; set; } = ScoringProfileId.Critical;
-        public int Level { get; set; } = 15;
-        public RelicSlot Slot { get; set; } = RelicSlot.Head;
-        public RelicMainStat MainStat { get; set; } = RelicMainStat.FlatHp;
-        public List<SubstatInput> Substats { get; set; } = [];
-
-        public static CalculatorInput CreateDefault() => new()
-        {
-            Substats =
-            [
-                new() { Stat = RelicStat.CritRate },
-                new() { Stat = RelicStat.CritDamage },
-                new() { Stat = RelicStat.Speed },
-                new() { Stat = RelicStat.AttackPercent }
-            ]
-        };
-    }
-
-    private sealed class SubstatInput
-    {
-        public RelicStat Stat { get; set; }
-        public decimal? Value { get; set; }
-    }
-
-    private sealed record ScoreSubmissionResponse(
-        ScoreResult Result,
-        bool RedisSaved,
-        string? Warning);
-
-    private sealed record PersistedState(
-        CalculatorInput Input,
-        ScoreSubmissionResponse Submission,
-        ScoringProfileId Profile);
 
     private sealed record ApiError(string Message);
 }

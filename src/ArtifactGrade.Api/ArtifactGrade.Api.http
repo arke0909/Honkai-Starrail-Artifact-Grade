@@ -22,6 +22,36 @@ Content-Type: application/json
 
 ###
 
+POST {{ArtifactGrade.Api_HostAddress}}/api/scores/character-batch
+Content-Type: application/json
+
+{
+  "characterId": "1407",
+  "characterName": "카스토리스",
+  "relics": [
+    {
+      "key": "castorice-sample",
+      "name": "테스트 유물",
+      "setName": "테스트 세트",
+      "equippedBy": "카스토리스",
+      "rarity": 5,
+      "level": 15,
+      "slot": "Head",
+      "mainStat": "FlatHp",
+      "substats": [
+        { "stat": "HpPercent", "value": 4.32 },
+        { "stat": "AttackPercent", "value": 4.32 },
+        { "stat": "CritRate", "value": 3.24 },
+        { "stat": "CritDamage", "value": 6.48 }
+      ],
+      "mainStatValue": 705.6,
+      "equippedCharacterId": "1407"
+    }
+  ]
+}
+
+###
+
 GET {{ArtifactGrade.Api_HostAddress}}/api/import/uid/100000999
 Accept: application/json
 
