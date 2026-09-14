@@ -26,6 +26,22 @@ public sealed record ScoredImportedRelic(
     ImportedRelic Relic,
     ScoreResult Result);
 
+public sealed record RelicCharacterGroup(
+    string? CharacterName,
+    IReadOnlyList<ImportedRelic> Relics);
+
+public static class RelicCharacterGrouping
+{
+    public static IReadOnlyList<RelicCharacterGroup> Create(
+        IReadOnlyList<ImportedRelic> relics) => relics
+        .GroupBy(relic => string.IsNullOrWhiteSpace(relic.EquippedBy)
+            ? null
+            : relic.EquippedBy.Trim())
+        .OrderBy(group => group.Key is null ? 1 : 0)
+        .Select(group => new RelicCharacterGroup(group.Key, group.ToArray()))
+        .ToArray();
+}
+
 public static class RelicBatchScorer
 {
     public static IReadOnlyList<ScoredImportedRelic> Calculate(

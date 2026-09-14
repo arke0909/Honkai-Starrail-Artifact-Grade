@@ -180,6 +180,72 @@
     color: #80ccb2;
 }
 
+.character-browser {
+    margin-top: 18px;
+}
+
+.character-browser-label {
+    display: block;
+    margin-bottom: 9px;
+    color: #8d96b4;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.character-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 1px 1px 7px;
+    scrollbar-width: thin;
+}
+
+.character-tab {
+    flex: 0 0 auto;
+    min-width: 112px;
+    padding: 10px 14px;
+    border: 1px solid rgba(194, 203, 235, 0.14);
+    border-radius: 11px;
+    color: #8c96b8;
+    background: rgba(13, 16, 30, 0.72);
+    text-align: left;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.character-tab:hover:not(:disabled) {
+    border-color: rgba(159, 136, 255, 0.5);
+    color: #d8ddf4;
+}
+
+.character-tab.active {
+    border-color: rgba(159, 136, 255, 0.68);
+    color: #f1efff;
+    background: linear-gradient(135deg, rgba(108, 81, 220, 0.26), rgba(37, 31, 70, 0.82));
+    box-shadow: inset 0 0 0 1px rgba(189, 172, 255, 0.08);
+}
+
+.character-tab:disabled {
+    cursor: wait;
+    opacity: 0.62;
+}
+
+.character-tab strong,
+.character-tab span {
+    display: block;
+}
+
+.character-tab strong {
+    font-size: 11px;
+}
+
+.character-tab span {
+    margin-top: 3px;
+    color: #737e9e;
+    font-size: 9px;
+}
+
 .import-controls {
     display: grid;
     grid-template-columns: minmax(230px, 1.5fr) minmax(150px, 0.8fr) auto auto;
