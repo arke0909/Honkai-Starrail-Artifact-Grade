@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+
+COPY NuGet.Config ./
+COPY src/ArtifactGrade.Domain/ArtifactGrade.Domain.csproj src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Client/ArtifactGrade.Client.csproj src/ArtifactGrade.Client/
+RUN dotnet restore src/ArtifactGrade.Client/ArtifactGrade.Client.csproj --configfile NuGet.Config
+
+COPY src/ArtifactGrade.Domain/ src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Client/ src/ArtifactGrade.Client/
+RUN dotnet publish src/ArtifactGrade.Client/ArtifactGrade.Client.csproj -c Release --no-restore -o /app
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/wwwroot /usr/share/nginx/html
+EXPOSE 80

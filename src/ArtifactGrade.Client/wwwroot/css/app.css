@@ -1,0 +1,131 @@
+:root {
+    color-scheme: dark;
+    font-family: Inter, Pretendard, "Noto Sans KR", "Malgun Gothic", sans-serif;
+    background: #080a14;
+    color: #f1f3ff;
+    font-synthesis: none;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    min-height: 100%;
+    background: #080a14;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+        radial-gradient(circle at 13% 7%, rgba(93, 67, 189, 0.18), transparent 27rem),
+        radial-gradient(circle at 88% 22%, rgba(28, 123, 166, 0.11), transparent 30rem),
+        linear-gradient(180deg, #0a0c18 0%, #070912 65%, #080a14 100%);
+}
+
+body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.22;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button,
+select {
+    cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+    outline: 2px solid #b39cff;
+    outline-offset: 2px;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1000;
+    padding: 14px 48px 14px 20px;
+    color: #fff;
+    background: #8e3347;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+}
+
+#blazor-error-ui a {
+    margin-left: 10px;
+    color: white;
+}
+
+#blazor-error-ui .dismiss {
+    position: absolute;
+    right: 18px;
+    cursor: pointer;
+}
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 7rem;
+    height: 7rem;
+    inset: 28vh 0 auto;
+    margin: auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: #242841;
+    stroke-width: 0.45rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: #9479ff;
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: absolute;
+    inset: calc(28vh + 2.8rem) 0 auto;
+    text-align: center;
+    color: #cad0ee;
+    font-size: 12px;
+}
+
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text, "불러오는 중");
+}

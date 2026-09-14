@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+.idea/
+.tmp/
+*.user
+*.suo
+TestResults/
+src/ArtifactGrade.Client/wwwroot/lib/
+src/ArtifactGrade.Client/wwwroot/sample-data/

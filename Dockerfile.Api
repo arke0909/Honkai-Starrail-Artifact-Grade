@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+
+COPY NuGet.Config ./
+COPY src/ArtifactGrade.Domain/ArtifactGrade.Domain.csproj src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Api/ArtifactGrade.Api.csproj src/ArtifactGrade.Api/
+RUN dotnet restore src/ArtifactGrade.Api/ArtifactGrade.Api.csproj --configfile NuGet.Config
+
+COPY src/ArtifactGrade.Domain/ src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Api/ src/ArtifactGrade.Api/
+RUN dotnet publish src/ArtifactGrade.Api/ArtifactGrade.Api.csproj -c Release --no-restore -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY --from=build /app .
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ArtifactGrade.Api.dll"]

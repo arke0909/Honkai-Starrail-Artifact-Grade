@@ -1,0 +1,7 @@
+**/bin
+**/obj
+.git
+.github
+.tmp
+src/ArtifactGrade.Client/wwwroot/lib
+src/ArtifactGrade.Client/wwwroot/sample-data

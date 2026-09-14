@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ArtifactGrade.Api/ArtifactGrade.Api.csproj" />
+    <Project Path="src/ArtifactGrade.Client/ArtifactGrade.Client.csproj" />
+    <Project Path="src/ArtifactGrade.Domain/ArtifactGrade.Domain.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ArtifactGrade.Domain.Tests/ArtifactGrade.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
