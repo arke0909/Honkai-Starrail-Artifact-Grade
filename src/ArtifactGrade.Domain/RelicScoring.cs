@@ -106,6 +106,9 @@ public static class CharacterGradeCatalog
         ("B", 60m)
     ];
 
+    public static IReadOnlyList<string> Grades { get; } =
+        [.. Thresholds.Select(item => item.Grade), "C"];
+
     public static string Summary { get; } = string.Join(
         " · ",
         Thresholds.Select(item => $"{item.Grade} {item.MinimumScore:0}")) + "점 이상";

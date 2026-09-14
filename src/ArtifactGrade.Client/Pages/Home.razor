@@ -170,34 +170,99 @@
 
                 <div class="loadout-board">
                     <article class="character-showcase">
-                        <span class="showcase-label">CURRENT CHARACTER</span>
-                        @if (SelectedCharacterInfo is { } characterInfo
-                            && CharacterImageUrl(characterInfo) is { } characterImageUrl)
-                        {
-                            <img src="@characterImageUrl"
-                                 alt="@($"{characterInfo.Name} 캐릭터 전신 이미지")"
-                                 @onerror="() => HandleCharacterImageError(characterInfo)" />
-                        }
-                        else
-                        {
-                            <div class="character-image-placeholder" role="img"
-                                 aria-label="@($"{CharacterDisplayName(selectedCharacter)} 이미지 없음")">
-                                <span>이미지 정보 없음</span>
-                            </div>
-                        }
-                        <div class="character-caption">
-                            <strong>@CharacterDisplayName(selectedCharacter)</strong>
-                            <span>장착 유물 @(selectedCharacter.Relics.Count)개</span>
-                            @if (SelectedCharacterInfo is { } displayedCharacter
-                                && _characterFallbacksInUse.Contains(displayedCharacter.Id))
+                        <div class="character-art">
+                            <span class="showcase-label">CURRENT CHARACTER</span>
+                            @if (SelectedCharacterInfo is { } characterInfo
+                                && CharacterImageUrl(characterInfo) is { } characterImageUrl)
                             {
-                                <span class="character-image-warning" role="status">
-                                    @(_characterImagesUnavailable.Contains(displayedCharacter.Id)
-                                        ? "외형과 기본 이미지 로드 실패"
-                                        : "외형 이미지 로드 실패 · 기본 이미지 표시 중")
-                                </span>
+                                <img src="@characterImageUrl"
+                                     alt="@($"{characterInfo.Name} 캐릭터 전신 이미지")"
+                                     @onerror="() => HandleCharacterImageError(characterInfo)" />
                             }
+                            else
+                            {
+                                <div class="character-image-placeholder" role="img"
+                                     aria-label="@($"{CharacterDisplayName(selectedCharacter)} 이미지 없음")">
+                                    <span>이미지 정보 없음</span>
+                                </div>
+                            }
+                            <div class="character-caption">
+                                <strong>@CharacterDisplayName(selectedCharacter)</strong>
+                                <span>장착 유물 @(selectedCharacter.Relics.Count)개</span>
+                                @if (SelectedCharacterInfo is { } displayedCharacter
+                                    && _characterFallbacksInUse.Contains(displayedCharacter.Id))
+                                {
+                                    <span class="character-image-warning" role="status">
+                                        @(_characterImagesUnavailable.Contains(displayedCharacter.Id)
+                                            ? "외형과 기본 이미지 로드 실패"
+                                            : "외형 이미지 로드 실패 · 기본 이미지 표시 중")
+                                    </span>
+                                }
+                            </div>
                         </div>
+
+                        @if (LoadoutSummary is { } summary)
+                        {
+                            <section class="loadout-summary"
+                                     aria-label="@($"{CharacterDisplayName(selectedCharacter)} 장비 종합 요약")">
+                                <div class="summary-score">
+                                    <div>
+                                        <span>RELIC OVERVIEW</span>
+                                        <strong>@summary.AverageGrade · @summary.AverageScore.ToString("0.0")점</strong>
+                                    </div>
+                                    <small>유효 유물 @summary.ValidRelicCount.ToString("0")개 평균</small>
+                                </div>
+
+                                <div class="summary-section">
+                                    <span class="summary-label">등급 분포</span>
+                                    <div class="grade-distribution">
+                                        @foreach (var grade in summary.GradeCounts)
+                                        {
+                                            <span><b>@grade.Grade</b> @grade.Count</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="summary-section summary-metrics">
+                                    <div>
+                                        <span class="summary-label">세트 구성</span>
+                                        @foreach (var set in summary.SetCounts)
+                                        {
+                                            <span class="set-summary">@set.SetName <b>@set.PieceCount.ToString("0")개</b></span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <span class="summary-label">핵심 주옵션</span>
+                                        <strong class="main-stat-fit">@summary.CoreMainStatCount/@summary.ValidRelicCount</strong>
+                                    </div>
+                                </div>
+
+                                <div class="summary-section replacement-priority">
+                                    <span class="summary-label">교체 우선</span>
+                                    <strong>@SlotsById[summary.ReplacementPriority.Relic.Slot].Name · @summary.ReplacementPriority.Relic.Name</strong>
+                                    <span>
+                                        @summary.ReplacementPriority.Result.Grade · @summary.ReplacementPriority.Result.Score.ToString("0.0")점
+                                        <b>@summary.ReplacementReason</b>
+                                    </span>
+                                </div>
+
+                                @if (summary.CoreStatContributions.Count > 0)
+                                {
+                                    <div class="summary-section">
+                                        <span class="summary-label">핵심 부옵션 기여 합계</span>
+                                        <div class="core-contribution-list">
+                                            @foreach (var contribution in summary.CoreStatContributions)
+                                            {
+                                                <span>
+                                                    @StatsById[contribution.Stat].Name
+                                                    <b>+@contribution.Score.ToString("0.0")</b>
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </section>
+                        }
                     </article>
 
                     <div class="relic-showcase" aria-label="@($"{CharacterDisplayName(selectedCharacter)} 장착 유물 전체")">
@@ -338,6 +403,9 @@
         group.CharacterId == _selectedCharacterId);
     private ImportedCharacter? SelectedCharacterInfo => _importResult?.Characters.FirstOrDefault(character =>
         character.Id == _selectedCharacterId);
+    private CharacterLoadoutSummary? LoadoutSummary => _characterProfile is null
+        ? null
+        : CharacterLoadoutSummarizer.Create(_characterProfile, _batchScores);
 
     private async Task ImportUidAsync()
     {
