@@ -109,6 +109,35 @@ public sealed class MihomoRelicParserTests
     }
 
     [Fact]
+    public void UsesDressedSkinMetadataForCharacterImage()
+    {
+        const string json = """
+            {
+              "_appearance_checked": true,
+              "_dressed_skin_ids": { "1212": "1121201" },
+              "player": { "nickname": "Trailblazer" },
+              "characters": [
+                {
+                  "id": "1212",
+                  "name": "Jingliu",
+                  "portrait": "image/character_portrait/1212.png",
+                  "relics": []
+                }
+              ]
+            }
+            """;
+
+        var character = Assert.Single(MihomoRelicParser.Parse(json).Characters);
+
+        Assert.Equal(
+            "https://enka.network/ui/hsr/SpriteOutput/AvatarDrawCard/AvatarSkin/1121201.png",
+            character.ImageUrl);
+        Assert.Equal(
+            "https://raw.githubusercontent.com/Mar-7th/StarRailRes/master/image/character_portrait/1212.png",
+            character.FallbackImageUrl);
+    }
+
+    [Fact]
     public void SkipsUnsupportedRelicAndReportsWarning()
     {
         const string json = """

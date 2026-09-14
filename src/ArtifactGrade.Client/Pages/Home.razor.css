@@ -350,6 +350,10 @@
     font-size: 10px;
 }
 
+.character-caption .character-image-warning {
+    color: #f2c879;
+}
+
 .relic-showcase {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

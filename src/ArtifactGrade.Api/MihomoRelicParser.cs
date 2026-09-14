@@ -59,10 +59,14 @@ public static class MihomoRelicParser
                 ? characterNameElement.GetString() ?? characterId
                 : characterId;
 
+            var defaultPortraitUrl = ParseAssetUrl(character, "portrait");
+            var skinPortraitUrl = EnkaAssetUrls.CharacterSkinPortrait(
+                MihomoAppearanceMetadata.FindSkinId(root, characterId));
             importedCharacters.Add(new ImportedCharacter(
                 characterId,
                 characterName,
-                ParseAssetUrl(character, "portrait")));
+                skinPortraitUrl ?? defaultPortraitUrl,
+                skinPortraitUrl is null ? null : defaultPortraitUrl));
 
             if (!character.TryGetProperty("relics", out var characterRelics)
                 || characterRelics.ValueKind != JsonValueKind.Array)

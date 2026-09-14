@@ -124,10 +124,12 @@
                 <div class="loadout-board">
                     <article class="character-showcase">
                         <span class="showcase-label">CURRENT CHARACTER</span>
-                        @if (SelectedCharacterInfo is { ImageUrl: { } characterImageUrl } characterInfo)
+                        @if (SelectedCharacterInfo is { } characterInfo
+                            && CharacterImageUrl(characterInfo) is { } characterImageUrl)
                         {
                             <img src="@characterImageUrl"
-                                 alt="@($"{characterInfo.Name} 캐릭터 전신 이미지")" />
+                                 alt="@($"{characterInfo.Name} 캐릭터 전신 이미지")"
+                                 @onerror="() => HandleCharacterImageError(characterInfo)" />
                         }
                         else
                         {
@@ -139,6 +141,15 @@
                         <div class="character-caption">
                             <strong>@CharacterDisplayName(selectedCharacter)</strong>
                             <span>장착 유물 @(selectedCharacter.Relics.Count)개</span>
+                            @if (SelectedCharacterInfo is { } displayedCharacter
+                                && _characterFallbacksInUse.Contains(displayedCharacter.Id))
+                            {
+                                <span class="character-image-warning" role="status">
+                                    @(_characterImagesUnavailable.Contains(displayedCharacter.Id)
+                                        ? "외형과 기본 이미지 로드 실패"
+                                        : "외형 이미지 로드 실패 · 기본 이미지 표시 중")
+                                </span>
+                            }
                         </div>
                     </article>
 
@@ -426,6 +437,8 @@
     private ScoreSubmissionResponse? _submission;
     private RelicImportResponse? _importResult;
     private readonly List<ScoredImportedRelic> _batchScores = [];
+    private readonly HashSet<string> _characterFallbacksInUse = [];
+    private readonly HashSet<string> _characterImagesUnavailable = [];
     private ScoringProfileId? _resultProfile;
     private readonly List<string> _messages = [];
     private string _uid = string.Empty;
@@ -585,6 +598,8 @@
         }
 
         _importResult = result;
+        _characterFallbacksInUse.Clear();
+        _characterImagesUnavailable.Clear();
         var firstCharacter = CharacterGroups.FirstOrDefault();
         _selectedCharacterId = firstCharacter?.CharacterId;
         _batchScores.Clear();
@@ -601,6 +616,29 @@
         }
 
         _selectedCharacterId = group.CharacterId;
+    }
+
+    private string? CharacterImageUrl(ImportedCharacter character)
+    {
+        if (_characterImagesUnavailable.Contains(character.Id))
+        {
+            return null;
+        }
+
+        return _characterFallbacksInUse.Contains(character.Id)
+            ? character.FallbackImageUrl
+            : character.ImageUrl;
+    }
+
+    private void HandleCharacterImageError(ImportedCharacter character)
+    {
+        if (character.FallbackImageUrl is not null
+            && _characterFallbacksInUse.Add(character.Id))
+        {
+            return;
+        }
+
+        _characterImagesUnavailable.Add(character.Id);
     }
 
     private string CharacterTabClass(RelicCharacterGroup group) =>

@@ -17,7 +17,8 @@ public sealed record ImportedRelic(
 public sealed record ImportedCharacter(
     string Id,
     string Name,
-    string? ImageUrl);
+    string? ImageUrl,
+    string? FallbackImageUrl = null);
 
 public sealed record RelicImportResponse(
     string Source,
