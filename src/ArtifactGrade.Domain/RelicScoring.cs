@@ -95,6 +95,25 @@ public sealed record MainStatContribution(
     decimal Score,
     CharacterStatPriority Priority);
 
+public static class CharacterGradeCatalog
+{
+    private static readonly (string Grade, decimal MinimumScore)[] Thresholds =
+    [
+        ("SSS", 97m),
+        ("SS", 90m),
+        ("S", 80m),
+        ("A", 70m),
+        ("B", 60m)
+    ];
+
+    public static string Summary { get; } = string.Join(
+        " · ",
+        Thresholds.Select(item => $"{item.Grade} {item.MinimumScore:0}")) + "점 이상";
+
+    public static string GetGrade(decimal score) =>
+        Thresholds.FirstOrDefault(item => score >= item.MinimumScore).Grade ?? "C";
+}
+
 public static class ScoreCalculator
 {
     private const decimal ImportedValueTolerance = 0.001m;
@@ -223,7 +242,7 @@ public static class ScoreCalculator
         return new ScoreResult(
             true,
             total,
-            GetGrade(total),
+            GetLegacyGrade(total),
             contributions,
             []);
     }
@@ -273,7 +292,7 @@ public static class ScoreCalculator
         return new ScoreResult(
             true,
             total,
-            GetGrade(total),
+            CharacterGradeCatalog.GetGrade(total),
             contributions,
             [],
             new MainStatContribution(request.MainStatWeight, mainStatScore, priority));
@@ -449,7 +468,7 @@ public static class ScoreCalculator
         return errors;
     }
 
-    private static string GetGrade(decimal score) => score switch
+    private static string GetLegacyGrade(decimal score) => score switch
     {
         >= 75m => "SSS",
         >= 65m => "SS",

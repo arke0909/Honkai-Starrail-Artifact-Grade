@@ -448,3 +448,18 @@ docker-compose.yml
 - 최종 재검토: 명세와 코드 기준 검토자가 롤 단위, 주옵션, Redis 기록·캐시, 입력 제한 보완 후 전체 변경분을 다시 확인했으며 남은 지적 사항은 없었다.
 - 사용법: `start-dev.cmd`를 더블클릭하고 UID를 입력해 `UID 불러오기`를 누르거나 Scanner JSON을 선택한다. 그 뒤 캐릭터 탭만 선택하면 평가 기준과 유물 점수가 자동으로 바뀐다. 프로필 선택, 직접 수치 입력과 별도 계산 버튼은 필요 없다.
 - 남은 한계: 현재 총점은 주·부옵션의 선형 가중치 휴리스틱이며 파티·광추·성혼·속도/효과 명중 목표 구간은 반영하지 않는다. 이 한계를 화면과 README에 명시했다.
+
+### 2026-09-14 / 캐릭터 자동 평가 등급 밸런스 조정
+
+- 목적: 주옵션 50점을 더한 뒤 대부분의 유물이 SS·SSS로 표시되어 등급의 구분력이 사라진 문제를 바로잡는다.
+- 원인: 기존 `C 35 / B 35 / A 45 / S 55 / SS 65 / SSS 75` 구간은 부옵션 중심의 이전 점수용이었다. 캐릭터 자동 평가는 주옵션과 부옵션을 각각 50점으로 합산하지만 같은 등급 함수를 공유하고 있어, 올바른 +15 주옵션만으로도 이미 50점에서 시작했다.
+- 실측 방법과 결과: 실행 중인 API에서 `GET /api/import/uid/800333171`로 캐릭터 8명·유물 48개를 가져오고, 캐릭터별로 `POST /api/scores/character-batch`를 호출해 전체 점수를 집계했다. 기존 분포는 SSS 39개, SS 7개, S 1개, A 1개로 SS 이상이 46/48개였다. 점수 범위는 48.2~98.7점, 중앙값은 84.2점이었다.
+- 결정: 캐릭터 자동 평가 등급을 `C < 60`, `B 60`, `A 70`, `S 80`, `SS 90`, `SSS 97점 이상`으로 조정했다. 총점과 가중치 계산식은 바꾸지 않고 등급 표시만 재보정했다. 기존 수동 `POST /api/scores`와 `POST /api/scores/batch`는 호환성을 위해 종전 등급 구간을 유지한다.
+- TDD 과정: 59.9·60·69.9·70·79.9·80·89.9·90·96.9·97점 경계값 테스트를 먼저 추가해 기존 구현에서 9개가 실패하는 것을 확인했다. 캐릭터 전용 등급 함수를 연결한 뒤 10개 경계값이 모두 통과했다. 테스트용 롤 값에 처음 HP 기본 롤 수치를 공격력 부옵션으로 사용해 목표 점수가 두 배 가까이 나온 문제는 5성 고정 공격력 기본 롤 `16.935019`로 바로잡았다.
+- 화면과 문서: `Home.razor`의 계산 기준 상자에 새 등급 컷을 표시했다. `README.md`, `BLOG_POST_DRAFT.md`, `CHARACTER_RELIC_WEIGHTS.md`에는 현재 구간, 기존 API와의 차이, 실제 사용 분포를 반영했다.
+- 리뷰와 수정: 기준 검토에서 캐릭터 등급 숫자가 계산 switch와 화면 문구에 중복돼 다음 조정 때 서로 달라질 수 있는 문제를 발견했다. `CharacterGradeCatalog`가 구간과 표시 문구를 함께 소유하고 계산기와 UI가 이를 참조하도록 바꿨다. 요구사항 검토에서 확인한 원격 미푸시는 최종 수정 커밋 뒤 처리한다.
+- 재측정: 같은 48개 표본은 SSS 2개, SS 13개, S 20개, A 9개, B 3개, C 1개로 분산됐다. 특히 카스토리스 6개는 SSS 1개·SS 3개·S 2개, 에버나이트 6개는 S 5개·A 1개로 화면에서 확인했다.
+- 실행·검증 명령: `dotnet build ArtifactGrade.slnx -c Release --no-restore --disable-build-servers --nologo`, `dotnet test ArtifactGrade.slnx -c Release --no-build --no-restore --disable-build-servers --nologo`, `dotnet format ArtifactGrade.slnx --verify-no-changes --no-restore --verbosity minimal`, `git diff --check`, `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/api-smoke.ps1`, `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/import-smoke.ps1 -Uid 800333171`을 실행했다.
+- 최종 정리 중 문제와 해결: 캐릭터용 함수와 구분되도록 기존 등급 함수 이름을 `GetLegacyGrade`로 바꾼 직후 전체 테스트가 실행 중인 API의 DLL 잠금 때문에 실패했다. `netstat -ano`와 프로세스 경로로 5072·5111 포트 소유자가 이 저장소 서버임을 확인해 두 프로세스만 종료하고, Release 전체 빌드와 52개 테스트를 다시 통과시킨 뒤 최신 서버를 재실행했다.
+- 최종 검증: Release 빌드는 경고 0개·오류 0개였고 xUnit 52개(도메인 38개, API 14개), 형식 검사, 공백 검사, 기존 API 스모크, Scanner 일괄 계산, 실제 UID 48개 가져오기가 모두 통과했다. 웹 클라이언트는 HTTP 200으로 응답했고 `/api/health`의 503은 Redis가 설치되지 않은 현재 환경에서 예상한 상태다. 최신 API와 클라이언트는 각각 5072·5111 포트에서 다시 실행했다.
+- 브라우저 확인: `http://localhost:5111`에서 새 등급 안내, UID 자동 가져오기, 캐릭터 탭 전환과 카드별 등급을 확인했다. 브라우저 로그에는 Blazor 디버깅 안내 1건만 있었고 오류·경고는 없었다. 서버 교체 뒤 기존 탭 연결이 만료된 경우 새 로컬 앱 탭을 열어 최신 화면에 다시 연결했다.

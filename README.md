@@ -146,12 +146,14 @@ HSR Scanner와 Reliquary Archiver는 HoYoverse 공식 도구가 아닙니다. �
 
 | 등급 | 점수 |
 |---|---:|
-| SSS | 75 이상 |
-| SS | 65 이상 |
-| S | 55 이상 |
-| A | 45 이상 |
-| B | 35 이상 |
-| C | 35 미만 |
+| SSS | 97 이상 |
+| SS | 90 이상 |
+| S | 80 이상 |
+| A | 70 이상 |
+| B | 60 이상 |
+| C | 60 미만 |
+
+이 구간은 주옵션 50점과 부옵션 50점을 합산하는 캐릭터 자동 평가용입니다. 공개 UID `800333171`의 48개 유물을 기준으로 기존 구간에서 SS 이상이 46개였던 쏠림을 확인한 뒤, 새 구간에서는 SSS 2개·SS 13개가 되도록 조정했습니다. 호환성을 위해 남겨 둔 기존 수동 점수 API의 등급 구간은 변경하지 않았습니다.
 
 롤 복원과 계산식은 [RelicScoring.cs](src/ArtifactGrade.Domain/RelicScoring.cs), 캐릭터 분류와 유효도 구간은 [CharacterScoring.cs](src/ArtifactGrade.Domain/CharacterScoring.cs)에서 확인할 수 있습니다. 캐릭터별 원본은 재현 가능한 결과를 위해 [StarRailScore `score.json`의 고정 커밋](https://github.com/Mar-7th/StarRailScore/blob/fb8268bc6345c52501bd4ec23f8df89b26497e0a/score.json)을 조회하며, 롤 단위와 `max` 생성 방식도 [같은 커밋의 생성 스크립트](https://github.com/Mar-7th/StarRailScore/blob/fb8268bc6345c52501bd4ec23f8df89b26497e0a/scripts/generate.py#L213-L248)에 맞췄습니다. 검증한 결과는 API 프로세스 메모리에 재사용하고 원본 JSON은 Redis에 30일 보관해 일시적인 원격 장애 때 대체합니다. 원본에 없는 캐릭터는 임의 프로필로 계산하지 않습니다.
 

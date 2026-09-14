@@ -66,6 +66,7 @@ public sealed class CharacterScoringProfileTests
         var scored = Assert.Single(RelicBatchScorer.Calculate(profile, [relic]));
 
         Assert.Equal(56m, scored.Result.Score);
+        Assert.Equal("C", scored.Result.Grade);
         Assert.Equal(50m, scored.Result.MainStat!.Score);
         Assert.Equal(6m, scored.Result.Contributions[0].Score);
         Assert.Equal(0m, scored.Result.Contributions[1].Score);
@@ -106,8 +107,35 @@ public sealed class CharacterScoringProfileTests
         var scored = Assert.Single(RelicBatchScorer.Calculate(profile, [relic]));
 
         Assert.Equal(100m, scored.Result.Score);
+        Assert.Equal("SSS", scored.Result.Grade);
         Assert.Equal(50m, scored.Result.MainStat!.Score);
         Assert.Equal(50m, scored.Result.Contributions.Sum(item => item.Score));
+    }
+
+    [Theory]
+    [InlineData("59.9", "C")]
+    [InlineData("60", "B")]
+    [InlineData("69.9", "B")]
+    [InlineData("70", "A")]
+    [InlineData("79.9", "A")]
+    [InlineData("80", "S")]
+    [InlineData("89.9", "S")]
+    [InlineData("90", "SS")]
+    [InlineData("96.9", "SS")]
+    [InlineData("97", "SSS")]
+    public void UsesBalancedGradesForCharacterScores(string scoreText, string expectedGrade)
+    {
+        var targetScore = decimal.Parse(scoreText, System.Globalization.CultureInfo.InvariantCulture);
+        var result = ScoreCalculator.Calculate(new CharacterScoreRequest(
+            15,
+            [new RelicSubstat(RelicStat.FlatAttack, 16.935019m)],
+            new Dictionary<RelicStat, decimal> { [RelicStat.FlatAttack] = 1m },
+            1m,
+            50m / (targetScore - 50m)));
+
+        Assert.True(result.IsValid);
+        Assert.Equal(targetScore, result.Score);
+        Assert.Equal(expectedGrade, result.Grade);
     }
 
     [Fact]
