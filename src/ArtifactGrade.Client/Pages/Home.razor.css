@@ -17,7 +17,7 @@
 .hero h1 {
     max-width: 760px;
     margin: 10px 0 17px;
-    font-size: clamp(35px, 5vw, 59px);
+    font-size: clamp(33px, 4.5vw, 54px);
     line-height: 1.12;
     letter-spacing: -0.055em;
 }
@@ -181,7 +181,7 @@
     display: block;
     margin-bottom: 9px;
     color: #8d96b4;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -230,13 +230,13 @@
 }
 
 .character-tab strong {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .character-tab span {
     margin-top: 3px;
     color: #737e9e;
-    font-size: 9px;
+    font-size: 10px;
 }
 
 .character-evaluation {
@@ -256,7 +256,7 @@
 
 .profile-eyebrow {
     color: #9c85ff;
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.17em;
 }
@@ -264,20 +264,20 @@
 .character-evaluation h3 {
     margin: 5px 0 0;
     color: #f0effa;
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .profile-source {
     color: #7c86a6;
-    font-size: 9px;
+    font-size: 10px;
 }
 
 .profile-description,
 .profile-caveat {
     margin: 12px 0 0;
     color: #7f89aa;
-    font-size: 10px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: 1.65;
 }
 
 .profile-caveat {
@@ -287,7 +287,7 @@
 .profile-storage-status {
     margin: 9px 0 0;
     color: #80ccb2;
-    font-size: 9px;
+    font-size: 10px;
 }
 
 .profile-storage-status.warning {
@@ -318,7 +318,7 @@
 .stat-weight span {
     overflow: hidden;
     color: #aeb6d2;
-    font-size: 8px;
+    font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -326,13 +326,13 @@
 .stat-weight b {
     margin-top: 5px;
     color: #e1dcfa;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 .stat-weight small {
     margin-top: 2px;
     color: #68718f;
-    font-size: 7px;
+    font-size: 10px;
 }
 
 .stat-weight.priority-core {
@@ -356,7 +356,7 @@
 .import-status {
     margin: 13px 1px 0;
     color: #80ccb2;
-    font-size: 10px;
+    font-size: 11px;
 }
 
 .loadout-board {
@@ -444,7 +444,7 @@
 .character-caption span {
     margin-top: 4px;
     color: #8b94b2;
-    font-size: 10px;
+    font-size: 12px;
 }
 
 .character-caption .character-image-warning {
@@ -479,7 +479,7 @@
 .summary-score span,
 .summary-label {
     color: #786caa;
-    font-size: 7px;
+    font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.12em;
 }
@@ -493,7 +493,7 @@
 .summary-score small {
     padding-bottom: 3px;
     color: #747e9f;
-    font-size: 8px;
+    font-size: 10px;
     white-space: nowrap;
 }
 
@@ -517,7 +517,7 @@
     border-radius: 999px;
     color: #8791b1;
     background: rgba(99, 73, 190, 0.1);
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .grade-distribution b,
@@ -538,7 +538,7 @@
     margin-top: 7px;
     overflow: hidden;
     color: #929bb9;
-    font-size: 8px;
+    font-size: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -564,7 +564,7 @@
     margin-top: 7px;
     overflow: hidden;
     color: #d4daed;
-    font-size: 9px;
+    font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -572,7 +572,7 @@
 .replacement-priority > span:last-child {
     margin-top: 5px;
     color: #8f98b5;
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .replacement-priority > span:last-child b {
@@ -629,7 +629,7 @@
     border-radius: 999px;
     color: #cfc5fa;
     background: rgba(8, 10, 20, 0.8);
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 800;
 }
 
@@ -647,13 +647,13 @@
 
 .relic-card-content > strong {
     color: #d7dced;
-    font-size: 10px;
+    font-size: 13px;
 }
 
 .relic-set {
     margin-top: 3px;
     color: #68718f;
-    font-size: 8px;
+    font-size: 11px;
 }
 
 .main-stat-value {
@@ -672,7 +672,7 @@
 
 .main-stat-value span {
     color: #786e9f;
-    font-size: 7px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.08em;
 }
@@ -680,13 +680,13 @@
 .main-stat-value b {
     margin-top: 2px;
     color: #c9bbff;
-    font-size: 11px;
+    font-size: 14px;
 }
 
 .main-stat-value small {
     margin-top: 3px;
     color: #756b9c;
-    font-size: 7px;
+    font-size: 10px;
 }
 
 .main-stat-value.priority-core {
@@ -725,20 +725,20 @@
 .relic-substat span {
     overflow: hidden;
     color: #8d96b4;
-    font-size: 7.5px;
+    font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .relic-substat small {
     color: #606987;
-    font-size: 6.5px;
+    font-size: 10px;
     white-space: nowrap;
 }
 
 .relic-substat b {
     color: #9fa8c7;
-    font-size: 7.5px;
+    font-size: 11px;
 }
 
 .relic-substat.priority-core {
@@ -771,7 +771,7 @@
 
 .relic-score {
     color: #b8a5ff;
-    font-size: 10px;
+    font-size: 13px;
     white-space: nowrap;
 }
 
@@ -781,7 +781,7 @@
 }
 
 .score-pending {
-    font-size: 8px;
+    font-size: 10px;
 }
 
 .score-pending {
@@ -791,7 +791,7 @@
 .relic-error {
     display: block;
     margin-top: 6px;
-    font-size: 8px;
+    font-size: 10px;
     line-height: 1.4;
 }
 
@@ -881,7 +881,7 @@ input:focus {
 
 @media (max-width: 640px) {
     .hero { padding: 42px 0 35px; }
-    .hero h1 { font-size: 36px; }
+    .hero h1 { font-size: 33px; }
     .panel { padding: 22px 17px; border-radius: 17px; }
     .import-grid { grid-template-columns: 1fr; }
     .import-action { grid-template-columns: 1fr; }
@@ -898,6 +898,7 @@ input:focus {
 }
 
 @media (max-width: 430px) {
+    .stat-weight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .summary-metrics { grid-template-columns: 1fr; }
     .relic-showcase { grid-template-columns: 1fr; }
 }
