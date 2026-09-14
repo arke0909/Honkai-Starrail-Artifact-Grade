@@ -21,3 +21,34 @@ Content-Type: application/json
 }
 
 ###
+
+GET {{ArtifactGrade.Api_HostAddress}}/api/import/uid/100000999
+Accept: application/json
+
+###
+
+POST {{ArtifactGrade.Api_HostAddress}}/api/import/scanner
+Content-Type: application/json
+
+{
+  "source": "HSR-Scanner",
+  "version": 4,
+  "relics": [
+    {
+      "name": "Musketeer of Wild Wheat",
+      "slot": "Hands",
+      "rarity": 5,
+      "level": 15,
+      "mainstat": "ATK",
+      "substats": [
+        { "key": "CRIT Rate_", "value": 6.48 },
+        { "key": "CRIT DMG_", "value": 12.96 }
+      ],
+      "location": "",
+      "_uid": "sample-relic"
+    }
+  ],
+  "characters": []
+}
+
+###

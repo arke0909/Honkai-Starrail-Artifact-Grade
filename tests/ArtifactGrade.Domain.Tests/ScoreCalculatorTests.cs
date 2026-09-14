@@ -132,6 +132,19 @@ public sealed class ScoreCalculatorTests
     }
 
     [Fact]
+    public void AcceptsMinorPrecisionNoiseFromImportedSubstatValues()
+    {
+        var result = ScoreCalculator.Calculate(new ScoreRequest(
+            ScoringProfileId.Defense,
+            3,
+            [new RelicSubstat(RelicStat.FlatDefense, 42.337546m)],
+            RelicSlot.Hands,
+            RelicMainStat.FlatAttack));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public void RejectsUndefinedEnumValuesWithoutThrowing()
     {
         var result = ScoreCalculator.Calculate(new ScoreRequest(

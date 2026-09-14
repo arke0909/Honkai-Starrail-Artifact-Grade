@@ -20,6 +20,138 @@
     </aside>
 </section>
 
+<section class="panel import-panel" aria-labelledby="import-title">
+    <div class="panel-heading">
+        <div>
+            <span class="step">AUTO IMPORT</span>
+            <h2 id="import-title">유물 자동 불러오기</h2>
+        </div>
+        <span class="optional">로그인 정보·쿠키 수집 없음</span>
+    </div>
+
+    <div class="import-grid">
+        <div class="import-option">
+            <div>
+                <strong>UID 공개 프로필</strong>
+                <p>게임 프로필에 공개한 캐릭터의 장착 유물을 바로 가져옵니다.</p>
+            </div>
+            <div class="import-action">
+                <label class="sr-only" for="uid-input">스타레일 UID</label>
+                <input id="uid-input" inputmode="numeric" maxlength="9" placeholder="UID 숫자 9자리" disabled="@IsImportBusy"
+                       @bind="_uid" @bind:event="oninput" />
+                <button class="secondary-button" type="button" disabled="@IsImportBusy" @onclick="ImportUidAsync">
+                    UID 불러오기
+                </button>
+            </div>
+        </div>
+
+        <div class="import-option">
+            <div>
+                <strong>전체 인벤토리 JSON</strong>
+                <p>HSR Scanner 또는 호환 도구가 만든 버전 4 JSON을 가져옵니다.</p>
+            </div>
+            <InputFile class="file-input" accept=".json,application/json" disabled="@IsImportBusy"
+                       OnChange="ImportScannerJsonAsync" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_importError))
+    {
+        <div class="message error-message" role="alert">
+            <strong>불러오지 못했습니다.</strong>
+            <p>@_importError</p>
+        </div>
+    }
+
+    @if (_importResult is not null)
+    {
+        <div class="import-summary">
+            <div>
+                <strong>@_importResult.Source</strong>
+                <span>@(_importResult.PlayerName ?? "로컬 JSON") · 5성 유물 @(_importResult.Relics.Count)개</span>
+            </div>
+            <span>@(_importResult.FromCache ? "Redis 캐시 사용" : "새로 불러옴")</span>
+        </div>
+
+        @if (_importResult.Warnings.Count > 0)
+        {
+            <div class="message warning-message" role="status">
+                <strong>일부 데이터 확인 필요</strong>
+                <ul>
+                    @foreach (var warning in _importResult.Warnings)
+                    {
+                        <li>@warning</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (_importResult.Relics.Count > 0)
+        {
+            <div class="import-controls">
+                <label class="field">
+                    <span>가져온 유물 선택</span>
+                    <select @bind="_selectedRelicKey" disabled="@IsImportBusy">
+                        @foreach (var relic in _importResult.Relics)
+                        {
+                            <option value="@relic.Key">@RelicLabel(relic)</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span>일괄 평가 프로필</span>
+                    <select @bind="_input.Profile" disabled="@IsImportBusy">
+                        @foreach (var profile in RelicCatalog.Profiles)
+                        {
+                            <option value="@profile.Value">@profile.Name</option>
+                        }
+                    </select>
+                </label>
+                <button class="secondary-button" type="button" disabled="@IsImportBusy" @onclick="ApplySelectedRelic">선택 유물 적용</button>
+                <button class="primary-button compact-button" type="button" disabled="@IsImportBusy"
+                        @onclick="CalculateImportedRelicsAsync">
+                    @(_isBatchScoring ? "계산 중..." : "전체 점수 계산")
+                </button>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_importStatus))
+        {
+            <p class="import-status" role="status">@_importStatus</p>
+        }
+
+        @if (_batchScores.Count > 0)
+        {
+            <div class="batch-results" aria-label="가져온 유물 점수">
+                @foreach (var scored in _batchScores)
+                {
+                    <div class="batch-row">
+                        <div>
+                            <strong>@RelicLabel(scored.Relic)</strong>
+                            <span>@SubstatSummary(scored.Relic)</span>
+                        </div>
+                        <div class="batch-score">
+                            @if (scored.Result.IsValid)
+                            {
+                                <b>@scored.Result.Grade · @scored.Result.Score.ToString("0.0")점</b>
+                            }
+                            else
+                            {
+                                <b class="invalid-score">계산 불가</b>
+                                @foreach (var error in scored.Result.Errors)
+                                {
+                                    <span class="batch-error">@error</span>
+                                }
+                            }
+                        </div>
+                        <button class="text-button" type="button" @onclick="() => ApplyImportedRelic(scored.Relic)">입력칸에 적용</button>
+                    </div>
+                }
+            </div>
+        }
+    }
+</section>
+
 <div class="calculator-grid">
     <section class="panel input-panel" aria-labelledby="input-title">
         <div class="panel-heading">
@@ -27,13 +159,13 @@
                 <span class="step">STEP 01</span>
                 <h2 id="input-title">유물 정보 입력</h2>
             </div>
-            <button class="text-button" type="button" @onclick="ResetAsync">전체 초기화</button>
+            <button class="text-button" type="button" disabled="@_isBatchScoring" @onclick="ResetAsync">전체 초기화</button>
         </div>
 
         <div class="field-grid">
             <label class="field">
                 <span>평가 프로필</span>
-                <select @bind="_input.Profile">
+                <select @bind="_input.Profile" disabled="@_isBatchScoring">
                     @foreach (var profile in RelicCatalog.Profiles)
                     {
                         <option value="@profile.Value">@profile.Name</option>
@@ -225,13 +357,24 @@
         RelicCatalog.Substats.ToDictionary(item => item.Value);
     private static readonly IReadOnlyDictionary<ScoringProfileId, CatalogItem<ScoringProfileId>> ProfilesById =
         RelicCatalog.Profiles.ToDictionary(item => item.Value);
+    private static readonly IReadOnlyDictionary<RelicSlot, CatalogItem<RelicSlot>> SlotsById =
+        RelicCatalog.Slots.ToDictionary(item => item.Value);
 
     private CalculatorInput _input = CalculatorInput.CreateDefault();
     private ScoreSubmissionResponse? _submission;
+    private RelicImportResponse? _importResult;
+    private readonly List<ScoredImportedRelic> _batchScores = [];
     private ScoringProfileId? _resultProfile;
     private readonly List<string> _messages = [];
+    private string _uid = string.Empty;
+    private string? _selectedRelicKey;
+    private string? _importError;
+    private string? _importStatus;
+    private bool _isImporting;
+    private bool _isBatchScoring;
     private bool _isCalculating;
     private string? _copyMessage;
+    private bool IsImportBusy => _isImporting || _isBatchScoring;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -267,6 +410,258 @@
             StateHasChanged();
         }
     }
+
+    private async Task ImportUidAsync()
+    {
+        if (IsImportBusy)
+        {
+            return;
+        }
+
+        var uid = _uid.Trim();
+        if (uid.Length != 9 || uid.Any(character => !char.IsAsciiDigit(character)))
+        {
+            _importError = "UID는 숫자 9자리로 입력해 주세요.";
+            return;
+        }
+
+        _isImporting = true;
+        _importError = null;
+        _importStatus = null;
+
+        try
+        {
+            using var response = await Http.GetAsync($"api/import/uid/{uid}");
+            if (!response.IsSuccessStatusCode)
+            {
+                _importError = await ReadApiErrorAsync(response);
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<RelicImportResponse>(JsonOptions);
+            SetImportResult(result);
+        }
+        catch (HttpRequestException)
+        {
+            _importError = "계산 서버에 연결하지 못했습니다. API 실행 상태를 확인해 주세요.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _importError = "공개 프로필 응답 형식을 읽지 못했습니다.";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    private async Task ImportScannerJsonAsync(InputFileChangeEventArgs eventArgs)
+    {
+        if (IsImportBusy)
+        {
+            return;
+        }
+
+        const long maximumFileBytes = 10 * 1024 * 1024;
+        _importError = null;
+        _importStatus = null;
+
+        if (eventArgs.File.Size > maximumFileBytes)
+        {
+            _importError = "JSON 파일은 10MB 이하여야 합니다.";
+            return;
+        }
+
+        _isImporting = true;
+        try
+        {
+            await using var stream = eventArgs.File.OpenReadStream(maximumFileBytes);
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            using var response = await Http.PostAsync("api/import/scanner", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                _importError = await ReadApiErrorAsync(response);
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<RelicImportResponse>(JsonOptions);
+            SetImportResult(result);
+        }
+        catch (IOException)
+        {
+            _importError = "선택한 JSON 파일을 읽지 못했습니다.";
+        }
+        catch (HttpRequestException)
+        {
+            _importError = "계산 서버에 연결하지 못했습니다. API 실행 상태를 확인해 주세요.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _importError = "HSR Scanner JSON 응답 형식을 읽지 못했습니다.";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    private void SetImportResult(RelicImportResponse? result)
+    {
+        if (result is null)
+        {
+            _importError = "불러오기 결과를 읽지 못했습니다.";
+            return;
+        }
+
+        _importResult = result;
+        _selectedRelicKey = result.Relics.FirstOrDefault()?.Key;
+        _batchScores.Clear();
+        _importStatus = result.Relics.Count > 0
+            ? $"5성 유물 {result.Relics.Count}개를 불러왔습니다."
+            : "가져올 수 있는 5성 유물이 없습니다.";
+    }
+
+    private void ApplySelectedRelic()
+    {
+        if (IsImportBusy)
+        {
+            return;
+        }
+
+        var relic = _importResult?.Relics.FirstOrDefault(item => item.Key == _selectedRelicKey);
+        if (relic is null)
+        {
+            _importError = "적용할 유물을 선택해 주세요.";
+            return;
+        }
+
+        ApplyImportedRelic(relic);
+    }
+
+    private void ApplyImportedRelic(ImportedRelic relic)
+    {
+        _input.Level = relic.Level;
+        _input.Slot = relic.Slot;
+        _input.MainStat = relic.MainStat;
+        _input.Substats = relic.Substats
+            .Select(substat => new SubstatInput { Stat = substat.Stat, Value = substat.Value })
+            .ToList();
+
+        foreach (var stat in RelicCatalog.Substats)
+        {
+            if (_input.Substats.Count >= 4)
+            {
+                break;
+            }
+
+            if (_input.Substats.All(row => row.Stat != stat.Value))
+            {
+                _input.Substats.Add(new SubstatInput { Stat = stat.Value });
+            }
+        }
+
+        _submission = null;
+        _resultProfile = null;
+        _messages.Clear();
+        _copyMessage = null;
+        _importError = null;
+        _importStatus = $"{RelicLabel(relic)} 정보를 입력칸에 적용했습니다.";
+    }
+
+    private async Task CalculateImportedRelicsAsync()
+    {
+        if (IsImportBusy)
+        {
+            return;
+        }
+
+        if (_importResult?.Relics.Count is not > 0)
+        {
+            _importError = "먼저 유물을 불러와 주세요.";
+            return;
+        }
+
+        _isBatchScoring = true;
+        _importError = null;
+        _batchScores.Clear();
+        var profile = _input.Profile;
+        var relics = _importResult.Relics.ToArray();
+
+        try
+        {
+            foreach (var relicChunk in relics.Chunk(300))
+            {
+                var request = new RelicBatchScoreRequest(profile, relicChunk);
+                using var response = await Http.PostAsJsonAsync("api/scores/batch", request, JsonOptions);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _importError = await ReadApiErrorAsync(response);
+                    _batchScores.Clear();
+                    return;
+                }
+
+                var scores = await response.Content.ReadFromJsonAsync<List<ScoredImportedRelic>>(JsonOptions);
+                if (scores is null)
+                {
+                    _importError = "일괄 계산 결과를 읽지 못했습니다.";
+                    _batchScores.Clear();
+                    return;
+                }
+
+                _batchScores.AddRange(scores);
+            }
+
+            var sortedScores = _batchScores
+                .OrderByDescending(score => score.Result.IsValid)
+                .ThenByDescending(score => score.Result.Score)
+                .ToArray();
+            _batchScores.Clear();
+            _batchScores.AddRange(sortedScores);
+            _importStatus = $"{ProfilesById[profile].Name} 기준으로 {_batchScores.Count}개를 계산했습니다.";
+        }
+        catch (HttpRequestException)
+        {
+            _importError = "계산 서버에 연결하지 못했습니다. API 실행 상태를 확인해 주세요.";
+            _batchScores.Clear();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            _importError = "일괄 계산 응답 형식을 읽지 못했습니다.";
+            _batchScores.Clear();
+        }
+        finally
+        {
+            _isBatchScoring = false;
+        }
+    }
+
+    private static async Task<string> ReadApiErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var error = await response.Content.ReadFromJsonAsync<ApiError>(JsonOptions);
+            return string.IsNullOrWhiteSpace(error?.Message)
+                ? $"서버가 {(int)response.StatusCode} 오류를 반환했습니다."
+                : error.Message;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return $"서버가 {(int)response.StatusCode} 오류를 반환했습니다.";
+        }
+    }
+
+    private static string RelicLabel(ImportedRelic relic)
+    {
+        var equipped = string.IsNullOrWhiteSpace(relic.EquippedBy) ? "미장착" : relic.EquippedBy;
+        return $"{relic.SetName} · {SlotsById[relic.Slot].Name} +{relic.Level} · {equipped}";
+    }
+
+    private static string SubstatSummary(ImportedRelic relic) => string.Join(
+        " · ",
+        relic.Substats.Select(substat =>
+            $"{StatsById[substat.Stat].Name} {substat.Value:0.##}{StatsById[substat.Stat].Unit}"));
 
     private async Task CalculateAsync()
     {
@@ -417,4 +812,6 @@
         CalculatorInput Input,
         ScoreSubmissionResponse Submission,
         ScoringProfileId Profile);
+
+    private sealed record ApiError(string Message);
 }

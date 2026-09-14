@@ -24,8 +24,9 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Redis: redis:6379,abortConnect=false,connectTimeout=1000,syncTimeout=1000
       ClientOrigins__0: http://localhost:8080
+      ForwardedHeaders__KnownNetworks__0: 172.30.0.0/24
     ports:
-      - "5072:8080"
+      - "127.0.0.1:5072:8080"
     depends_on:
       redis:
         condition: service_healthy
@@ -43,3 +44,9 @@ services:
 
 volumes:
   artifact-grade-redis:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

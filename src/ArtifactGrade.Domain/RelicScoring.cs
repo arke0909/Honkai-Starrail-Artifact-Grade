@@ -82,6 +82,7 @@ public sealed record ScoreResult(
 
 public static class ScoreCalculator
 {
+    private const decimal ImportedValueTolerance = 0.001m;
     private static readonly IReadOnlyDictionary<RelicStat, decimal> HighestRolls =
         new Dictionary<RelicStat, decimal>
         {
@@ -275,7 +276,7 @@ public static class ScoreCalculator
         {
             var maximumRollCount = 1 + request.Level / 3;
             if (request.Substats.Any(substat =>
-                    substat.Value > HighestRolls[substat.Stat] * maximumRollCount))
+                    substat.Value > HighestRolls[substat.Stat] * maximumRollCount + ImportedValueTolerance))
             {
                 errors.Add("부옵션 수치가 현재 강화 단계에서 가능한 최대치를 초과했습니다.");
             }

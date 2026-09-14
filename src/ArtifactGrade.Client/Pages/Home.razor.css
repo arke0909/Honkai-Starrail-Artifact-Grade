@@ -66,6 +66,207 @@
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
 }
 
+.import-panel {
+    margin-bottom: 18px;
+}
+
+.import-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.import-option {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px;
+    border: 1px solid rgba(194, 203, 235, 0.11);
+    border-radius: 14px;
+    background: rgba(10, 13, 25, 0.45);
+}
+
+.import-option strong {
+    color: #d5daee;
+    font-size: 13px;
+}
+
+.import-option p {
+    margin: 6px 0 0;
+    color: #717a99;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.import-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.secondary-button {
+    min-height: 46px;
+    padding: 0 17px;
+    border: 1px solid rgba(173, 154, 255, 0.35);
+    border-radius: 11px;
+    color: #ded7ff;
+    background: rgba(105, 78, 205, 0.18);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.secondary-button:hover:not(:disabled) {
+    border-color: rgba(189, 174, 255, 0.68);
+    background: rgba(105, 78, 205, 0.3);
+}
+
+.secondary-button:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.file-input {
+    height: auto;
+    min-height: 46px;
+    padding: 7px;
+    color: #8f98b8;
+    font-size: 10px;
+}
+
+.file-input::file-selector-button {
+    height: 30px;
+    margin-right: 10px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    color: #ded7ff;
+    background: rgba(105, 78, 205, 0.28);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.import-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid rgba(126, 204, 178, 0.2);
+    border-radius: 12px;
+    background: rgba(38, 96, 78, 0.12);
+}
+
+.import-summary strong,
+.import-summary span {
+    display: block;
+}
+
+.import-summary strong {
+    color: #cdd7e8;
+    font-size: 12px;
+}
+
+.import-summary span {
+    margin-top: 3px;
+    color: #7f8ba9;
+    font-size: 10px;
+}
+
+.import-summary > span {
+    flex: 0 0 auto;
+    color: #80ccb2;
+}
+
+.import-controls {
+    display: grid;
+    grid-template-columns: minmax(230px, 1.5fr) minmax(150px, 0.8fr) auto auto;
+    align-items: end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.compact-button {
+    justify-content: center;
+    min-height: 46px;
+    margin-top: 0;
+    padding: 0 17px;
+}
+
+.import-status {
+    margin: 13px 1px 0;
+    color: #80ccb2;
+    font-size: 10px;
+}
+
+.batch-results {
+    display: grid;
+    max-height: 480px;
+    gap: 7px;
+    overflow: auto;
+    margin-top: 17px;
+    padding-right: 4px;
+}
+
+.batch-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(211, 219, 255, 0.08);
+    border-radius: 11px;
+    background: rgba(10, 13, 24, 0.5);
+}
+
+.batch-row strong,
+.batch-row span {
+    display: block;
+}
+
+.batch-row strong {
+    overflow: hidden;
+    color: #cbd1e6;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-row span {
+    overflow: hidden;
+    margin-top: 4px;
+    color: #636d8b;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.batch-row b {
+    color: #b8a5ff;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.batch-score {
+    min-width: 0;
+    text-align: right;
+}
+
+.batch-row .invalid-score {
+    color: #ef9bad;
+}
+
+.batch-row .batch-error {
+    max-width: 280px;
+    color: #b77f8b;
+    line-height: 1.45;
+    text-align: right;
+    text-overflow: clip;
+    white-space: normal;
+}
+
 .result-panel {
     background:
         radial-gradient(circle at 72% 16%, rgba(110, 82, 225, 0.13), transparent 15rem),
@@ -444,6 +645,7 @@ input:focus {
     }
 
     .formula-note { max-width: 430px; }
+    .import-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .calculator-grid { grid-template-columns: 1fr; }
 }
 
@@ -451,6 +653,13 @@ input:focus {
     .hero { padding: 42px 0 35px; }
     .hero h1 { font-size: 36px; }
     .panel { padding: 22px 17px; border-radius: 17px; }
+    .import-grid,
+    .import-controls { grid-template-columns: 1fr; }
+    .import-action { grid-template-columns: 1fr; }
+    .import-summary { align-items: flex-start; flex-direction: column; }
+    .batch-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .batch-row .batch-error { max-width: 160px; }
+    .batch-row .text-button { grid-column: 1 / -1; justify-self: start; }
     .field-grid { grid-template-columns: 1fr; }
     .substat-row { grid-template-columns: 23px 1fr 0.72fr; gap: 6px; }
     .substat-row select,

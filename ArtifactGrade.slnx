@@ -5,6 +5,7 @@
     <Project Path="src/ArtifactGrade.Domain/ArtifactGrade.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ArtifactGrade.Api.Tests/ArtifactGrade.Api.Tests.csproj" />
     <Project Path="tests/ArtifactGrade.Domain.Tests/ArtifactGrade.Domain.Tests.csproj" />
   </Folder>
 </Solution>

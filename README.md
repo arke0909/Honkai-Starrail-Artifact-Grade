@@ -1,6 +1,6 @@
 # 개척자의 유물 감정소
 
-붕괴: 스타레일의 5성 유물 부옵션을 입력하면 육성 프로필별 가중치를 적용해 점수, 등급, 스탯별 기여도를 보여주는 C# 웹 애플리케이션입니다.
+붕괴: 스타레일의 5성 유물을 UID 공개 프로필이나 HSR Scanner JSON에서 가져오고, 육성 프로필별 가중치를 적용해 점수, 등급, 스탯별 기여도를 보여주는 C# 웹 애플리케이션입니다.
 
 > 게임의 공식 평가 기능이 아닌 참고용 도구입니다. 유물 부옵션 증가량은 공개 자료를 사용하고, 프로필별 가중치와 등급 구간은 이 프로젝트에서 정의한 평가 기준입니다.
 
@@ -14,6 +14,10 @@
 - 최근 입력 브라우저 저장, 전체 초기화, 결과 텍스트 복사
 - Redis에 최근 20개 계산 기록과 전체 계산 횟수 저장
 - Redis 장애 시 계산은 제공하고 저장 실패를 화면과 서버 로그에 명시
+- UID 한 번으로 공개 프로필 캐릭터의 장착 유물 자동 불러오기
+- HSR Scanner 버전 4 및 호환 JSON에서 전체 5성 유물 가져오기
+- 가져온 유물을 입력칸에 적용하거나 최대 300개씩 나눠 전체 점수 계산·정렬
+- UID 응답을 Redis에 5분 동안 캐시하며 캐시 장애 시에도 외부 조회 계속 진행
 - 데스크톱·모바일 반응형 UI
 
 ## 구성
@@ -22,27 +26,56 @@
 flowchart LR
     U["사용자 브라우저"] --> C["Blazor WebAssembly\nArtifactGrade.Client"]
     C -->|"POST /api/scores"| A["ASP.NET Core API\nArtifactGrade.Api"]
+    C -->|"GET /api/import/uid/{uid}"| A
+    C -->|"POST /api/import/scanner"| A
     A --> D["C# 계산·검증 도메인\nArtifactGrade.Domain"]
     A -->|"최근 기록·계산 횟수"| R[(Redis)]
+    A -->|"공개 프로필 조회"| M["MiHoMo API"]
+    A -->|"UID 응답 5분 캐시"| R
 ```
 
 | 프로젝트 | 책임 |
 |---|---|
 | `ArtifactGrade.Domain` | 유물 데이터, 입력 검증, 점수와 등급 계산 |
-| `ArtifactGrade.Api` | HTTP 계약, Redis 기록, Redis 장애 안내 |
-| `ArtifactGrade.Client` | 입력 UI, 결과 표시, 브라우저 저장과 복사 |
-| `ArtifactGrade.Domain.Tests` | xUnit 기반 계산·검증 회귀 테스트 |
+| `ArtifactGrade.Api` | HTTP 계약, MiHoMo·Scanner 변환, Redis 기록·UID 캐시, 장애 안내 |
+| `ArtifactGrade.Client` | 자동 가져오기, 입력 UI, 일괄 결과, 브라우저 저장과 복사 |
+| `ArtifactGrade.Domain.Tests`, `ArtifactGrade.Api.Tests` | xUnit 기반 계산·변환·캐시 회귀 테스트 |
 
 ## 필요 환경
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Redis 7 이상 또는 Docker Desktop
+- 선택 사항: Redis 7 이상 또는 Docker Desktop
 
-Docker를 사용하지 않는 경우 실행 중인 Redis 주소를 `src/ArtifactGrade.Api/appsettings.json`의 `ConnectionStrings:Redis`에 설정합니다.
+Redis와 Docker를 모두 설치하지 않아도 수동 계산, UID 불러오기, JSON 불러오기와 일괄 계산을 사용할 수 있습니다. 이 경우 최근 계산 저장과 UID 캐시만 실패 경고를 남기고 생략합니다.
 
-## 가장 빠른 실행 방법
+## 가장 빠른 실행 방법 - Docker 없음
 
-Docker가 설치되어 있다면 저장소 루트에서 다음 명령을 실행합니다.
+먼저 저장소 루트에서 패키지를 복원합니다.
+
+```powershell
+dotnet restore ArtifactGrade.slnx --configfile NuGet.Config
+```
+
+첫 번째 터미널에서 API를 실행합니다.
+
+```powershell
+dotnet run --project src/ArtifactGrade.Api
+```
+
+두 번째 터미널에서 클라이언트를 실행합니다.
+
+```powershell
+dotnet run --project src/ArtifactGrade.Client
+```
+
+브라우저에서 <http://localhost:5111>로 접속합니다. Redis 연결 경고는 예상된 동작이며 계산과 자동 가져오기는 계속 사용할 수 있습니다.
+
+## Redis 사용 - 선택 사항
+
+로컬 Redis가 이미 실행 중이라면 `src/ArtifactGrade.Api/appsettings.json`의 `ConnectionStrings:Redis`에 주소를 설정합니다. Redis를 연결하면 최근 계산 20개, 누적 계산 횟수, UID 응답 5분 캐시를 사용할 수 있습니다.
+
+Docker Desktop이 있는 환경에서 Client, API, Redis를 한 번에 실행하려면 다음 명령을 사용합니다.
+
 
 ```powershell
 docker compose up --build
@@ -51,49 +84,34 @@ docker compose up --build
 - 웹 화면: <http://localhost:8080>
 - API 상태: <http://localhost:5072/api/health>
 
-종료할 때는 다음 명령을 사용합니다.
-
 ```powershell
 docker compose down
 ```
 
 Redis 데이터는 `artifact-grade-redis` Docker 볼륨에 유지됩니다.
 
-## 로컬 개발 실행
-
-### 1. 패키지 복원
-
-```powershell
-dotnet restore ArtifactGrade.slnx --configfile NuGet.Config
-```
-
-### 2. Redis 실행
-
-```powershell
-docker compose up -d redis
-```
-
-### 3. API 실행
-
-첫 번째 터미널에서 실행합니다.
-
-```powershell
-dotnet run --project src/ArtifactGrade.Api
-```
-
-기본 주소는 `http://localhost:5072`입니다.
-
-### 4. Blazor 클라이언트 실행
-
-두 번째 터미널에서 실행합니다.
-
-```powershell
-dotnet run --project src/ArtifactGrade.Client
-```
-
-브라우저에서 `http://localhost:5111`로 접속합니다.
-
 ## 사용법
+
+### UID로 장착 유물 자동 불러오기
+
+1. 게임에서 프로필 편집 화면을 열고 확인할 캐릭터와 유물을 공개합니다.
+2. 화면 위쪽 `UID 공개 프로필`에 숫자 9자리 UID를 입력합니다.
+3. `UID 불러오기`를 누릅니다.
+4. 가져온 유물 목록에서 한 개를 골라 `선택 유물 적용`을 누르거나 평가 프로필을 선택하고 `전체 점수 계산`을 누릅니다.
+5. UID 방식은 공개 프로필에 전시된 최대 8명 캐릭터의 장착 유물만 조회합니다.
+
+UID 조회는 MiHoMo 공개 API를 사용합니다. HoYoLAB 로그인 정보, 쿠키 또는 토큰은 입력받지 않습니다. 외부 서비스 보호를 위해 UID 조회 API는 호출자 IP별로 1분에 10회까지 허용하며, 형식이 잘못된 UID는 제한 횟수에 포함하지 않습니다.
+
+### HSR Scanner JSON으로 전체 인벤토리 가져오기
+
+1. [HSR Scanner](https://github.com/kel-z/HSR-Scanner)를 안내에 따라 실행하고 버전 4 JSON을 생성합니다.
+2. 화면 위쪽 `전체 인벤토리 JSON`에서 생성한 `.json` 파일을 선택합니다.
+3. 가져온 목록에서 유물을 적용하거나 `전체 점수 계산`을 누릅니다.
+4. 파일은 최대 10MB이며 API가 변환한 뒤 원본 JSON을 저장하지 않습니다.
+
+HSR Scanner와 Reliquary Archiver는 HoYoverse 공식 도구가 아닙니다. 외부 도구 사용 여부는 각 프로젝트 안내를 확인한 뒤 결정하세요.
+
+### 직접 입력
 
 1. 장착할 캐릭터의 성장 방식과 가까운 평가 프로필을 선택합니다.
 2. 유물 부위를 고른 뒤 게임에 표시된 주옵션을 선택합니다.
@@ -132,10 +150,17 @@ dotnet run --project src/ArtifactGrade.Client
 |---|---|---|
 | `artifact-grade:calculations:recent` | List | 최신 계산 20개 JSON 기록 |
 | `artifact-grade:calculations:count` | String/Integer | 정상 계산 누적 횟수 |
+| `artifact-grade:imports:uid:{UID-SHA256}` | String | MiHoMo 원본 응답, 5분 뒤 자동 만료 |
 
 Redis가 연결되지 않아도 점수 계산 API는 `200 OK`와 계산 결과를 반환합니다. 이때 `redisSaved`는 `false`이며 `warning`에 저장 실패가 표시됩니다. 연결 상태는 `/api/health`에서 확인할 수 있습니다.
 
 ## 테스트와 빌드
+
+전체 자동화 테스트:
+
+```powershell
+dotnet test ArtifactGrade.slnx -c Release --no-restore --disable-build-servers
+```
 
 도메인 테스트:
 
@@ -155,6 +180,18 @@ API를 실행한 상태에서 스모크 테스트:
 powershell -ExecutionPolicy Bypass -File tests/api-smoke.ps1
 ```
 
+Docker 없이 Scanner JSON 가져오기와 일괄 계산 테스트:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests/import-smoke.ps1
+```
+
+실제 공개 UID 조회까지 확인하려면 본인 UID를 추가합니다.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests/import-smoke.ps1 -Uid 123456789
+```
+
 Docker Compose 전체를 실행한 상태에서 Redis 저장·최근 20개 제한·누적 횟수 통합 테스트:
 
 ```powershell
@@ -169,10 +206,11 @@ GitHub Actions도 푸시와 Pull Request마다 복원, 테스트, Release 빌드
 - Docker 클라이언트는 Nginx가 같은 출처의 `/api` 요청을 API 컨테이너로 전달하므로 외부 주소를 다시 빌드할 필요가 없습니다.
 - API Redis 주소: 환경 변수 `ConnectionStrings__Redis`
 - 허용할 클라이언트 출처: `ClientOrigins__0`, `ClientOrigins__1` 형식의 환경 변수
+- 신뢰할 리버스 프록시 네트워크: `ForwardedHeaders__KnownNetworks__0` 형식의 CIDR. Compose는 전용 `172.30.0.0/24` 네트워크만 신뢰합니다.
 - HTTPS는 운영 환경의 리버스 프록시 또는 호스팅 플랫폼에서 종료하는 구성을 전제로 합니다.
 
 Redis가 필요하므로 GitHub Pages만으로 전체 서비스를 배포할 수 없습니다. Blazor 정적 파일, ASP.NET Core API, Redis를 함께 제공할 수 있는 Docker 지원 호스팅을 사용합니다.
-Compose의 Redis 호스트 포트는 로컬 컴퓨터(`127.0.0.1`)에만 열립니다. 운영 환경에서는 외부 Redis 포트를 공개하지 말고 Docker 내부 네트워크로만 연결합니다.
+Compose의 API 개발 포트와 Redis 포트는 로컬 컴퓨터(`127.0.0.1`)에만 열립니다. 외부 사용자는 Nginx를 통해 접근하며, API는 신뢰된 Docker 네트워크가 전달한 실제 호출자 IP를 기준으로 UID 요청을 제한합니다. 운영 환경에서는 외부 Redis 포트를 공개하지 말고 Docker 내부 네트워크로만 연결합니다.
 
 ## 디렉터리 구조
 
@@ -183,11 +221,14 @@ src/
   ArtifactGrade.Client/
 tests/
   ArtifactGrade.Domain.Tests/
+  ArtifactGrade.Api.Tests/
   api-smoke.ps1
+  import-smoke.ps1
   redis-integration.ps1
 docs/
   DEVELOPMENT_PLAN.md
   BLOG_POST_DRAFT.md
+  research/AUTOMATIC_RELIC_IMPORT.md
 .github/workflows/ci.yml
 docker-compose.yml
 ```
@@ -197,13 +238,17 @@ docker-compose.yml
 - 5성 유물만 평가합니다.
 - 캐릭터별 세부 목표 수치 대신 6개 범용 육성 프로필을 사용합니다.
 - 주옵션의 캐릭터 적합도는 아직 점수에 포함하지 않습니다.
-- 이미지 인식과 UID 자동 불러오기는 지원하지 않습니다.
+- UID 가져오기는 공개 프로필에 전시된 캐릭터의 장착 유물만 지원합니다.
+- 전체 인벤토리 가져오기는 HSR Scanner 버전 4 호환 JSON이 필요합니다.
+- 이미지 직접 인식은 아직 지원하지 않습니다.
 - Redis가 설치되지 않은 개발 환경에서는 저장 실패 경고가 정상적으로 표시됩니다.
 
 ## 데이터 출처
 
 - [Honkai: Star Rail Wiki - Relic Stats](https://honkai-star-rail.fandom.com/wiki/Relic/Stats)
 - [HoYoLAB - What are Relics?](https://www.hoyolab.com/article/16076157)
+- [MiHoMo Parsed Data API](https://march7th.xyz/en/api/parsed.html)
+- [HSR Scanner JSON 형식](https://github.com/kel-z/HSR-Scanner/blob/main/README.md)
 
 5성 유물의 부옵션이 3레벨마다 추가 또는 강화된다는 규칙과 세 단계 증가량을 교차 확인했습니다. 프로젝트는 그중 최고 증가량으로 입력값을 정규화합니다.
 
