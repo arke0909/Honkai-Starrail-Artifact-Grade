@@ -146,7 +146,7 @@
                     <div class="batch-row">
                         <div>
                             <strong>@RelicLabel(scored.Relic)</strong>
-                            <span>@SubstatSummary(scored.Relic)</span>
+                            <span>@RelicStatSummary(scored.Relic)</span>
                         </div>
                         <div class="batch-score">
                             @if (scored.Result.IsValid)
@@ -378,6 +378,11 @@
         RelicCatalog.Profiles.ToDictionary(item => item.Value);
     private static readonly IReadOnlyDictionary<RelicSlot, CatalogItem<RelicSlot>> SlotsById =
         RelicCatalog.Slots.ToDictionary(item => item.Value);
+    private static readonly IReadOnlyDictionary<RelicMainStat, CatalogItem<RelicMainStat>> MainStatsById =
+        RelicCatalog.Slots
+            .SelectMany(slot => RelicCatalog.MainStatsFor(slot.Value))
+            .DistinctBy(item => item.Value)
+            .ToDictionary(item => item.Value);
 
     private CalculatorInput _input = CalculatorInput.CreateDefault();
     private ScoreSubmissionResponse? _submission;
@@ -716,10 +721,15 @@
         return $"{relic.SetName} · {SlotsById[relic.Slot].Name} +{relic.Level} · {equipped}";
     }
 
-    private static string SubstatSummary(ImportedRelic relic) => string.Join(
-        " · ",
-        relic.Substats.Select(substat =>
-            $"{StatsById[substat.Stat].Name} {substat.Value:0.##}{StatsById[substat.Stat].Unit}"));
+    private static string RelicStatSummary(ImportedRelic relic)
+    {
+        var mainStat = MainStatsById[relic.MainStat];
+        var substats = string.Join(
+            " · ",
+            relic.Substats.Select(substat =>
+                $"{StatsById[substat.Stat].Name} {substat.Value:0.##}{StatsById[substat.Stat].Unit}"));
+        return $"주옵션 {mainStat.Name}{mainStat.Unit} · 부옵션 {substats}";
+    }
 
     private async Task CalculateAsync()
     {
