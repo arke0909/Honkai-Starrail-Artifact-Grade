@@ -20,6 +20,8 @@
     font-size: clamp(33px, 4.5vw, 54px);
     line-height: 1.12;
     letter-spacing: -0.055em;
+    text-wrap: balance;
+    word-break: keep-all;
 }
 
 .hero-copy {
