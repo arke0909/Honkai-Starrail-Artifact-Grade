@@ -4,6 +4,12 @@
 
 > 게임의 공식 평가 기능이 아닌 참고용 도구입니다. 캐릭터별 가중치는 StarRailScore 공개 데이터를 실행 시 조회하며, 파티·광추·성혼·속도 구간까지 시뮬레이션하는 전투 점수는 아닙니다.
 
+## 화면
+
+![UID 자동 불러오기 화면](docs/images/artifact-grade-overview.png)
+
+![캐릭터 유효 옵션과 장착 유물 결과](docs/images/artifact-grade-desktop.png)
+
 ## 주요 기능
 
 - UID 또는 Scanner JSON을 불러오면 선택 캐릭터의 장착 유물을 즉시 자동 계산
@@ -168,7 +174,7 @@ HSR Scanner와 Reliquary Archiver는 HoYoverse 공식 도구가 아닙니다. �
 | `artifact-grade:imports:uid:{UID-SHA256}` | String | MiHoMo parsed 응답과 착용 외형 ID를 병합한 JSON, 5분 뒤 자동 만료 |
 | `artifact-grade:profiles:starrailscore:{source-commit}` | String | 고정 커밋의 캐릭터 평가 원본 JSON, 30일 뒤 자동 만료 |
 
-Redis가 연결되지 않아도 점수 계산 API는 `200 OK`와 계산 결과를 반환합니다. 이때 `redisSaved`는 `false`이며 `warning`에 저장 실패가 표시됩니다. 연결 상태는 `/api/health`에서 확인할 수 있습니다.
+Redis가 연결되지 않아도 점수 계산 API는 `200 OK`와 계산 결과를 반환합니다. 이때 `redisSaved`는 `false`이며 `warning`에 저장 실패가 표시됩니다. 웹 프로세스의 생존 상태는 Redis와 무관한 `/api/health/live`, Redis 연결 상태는 `/api/health`에서 확인할 수 있습니다.
 
 ## 테스트와 빌드
 
@@ -216,10 +222,26 @@ powershell -ExecutionPolicy Bypass -File tests/redis-integration.ps1
 
 GitHub Actions도 푸시와 Pull Request마다 복원, 테스트, Release 빌드를 실행합니다.
 
+## Docker 없이 Render에 외부 배포
+
+로컬 컴퓨터에 Docker를 설치하지 않아도 Render가 저장소의 `Dockerfile.Render`를 원격에서 빌드합니다. `render.yaml` Blueprint는 Blazor 화면과 ASP.NET Core API를 한 웹 서비스로 올리고, 같은 싱가포르 리전에 무료 Key Value(Redis 호환) 인스턴스를 함께 생성합니다.
+
+[Render에서 Blueprint 배포 시작](https://render.com/deploy?repo=https://github.com/arke0909/Honkai-Starrail-Artifact-Grade)
+
+1. 링크를 열어 Render에 로그인하고 GitHub 저장소 접근을 허용합니다.
+2. Blueprint에 표시된 웹 서비스와 Key Value가 모두 `free`인지 확인하고 적용합니다.
+3. 배포가 끝나면 생성된 `onrender.com` 주소로 접속합니다.
+4. `<배포 주소>/api/health/live`가 `status=alive`를 반환하는지 확인합니다.
+5. `<배포 주소>/api/health`가 `status=healthy`, `redis=connected`를 반환하는지 확인합니다.
+6. UID를 두 번 불러와 두 번째 결과에 캐시 사용 표시가 나오는지 확인합니다.
+
+무료 웹 서비스는 15분 동안 요청이 없으면 정지되고 다음 접속 때 다시 시작하는 데 약 1분이 걸릴 수 있습니다. 무료 Key Value는 재시작 시 데이터가 사라질 수 있으므로 제출 시연과 개인 프로젝트용으로 사용하고, 영구 기록이 필요하면 유료 지속성 설정을 선택합니다. 자세한 제약은 [Render 무료 플랜 문서](https://render.com/docs/free)에서 확인합니다.
+
 ## 배포 설정
 
 - 로컬 개발 API 주소: `src/ArtifactGrade.Client/wwwroot/appsettings.Development.json`의 `ApiBaseUrl`
 - Docker 클라이언트는 Nginx가 같은 출처의 `/api` 요청을 API 컨테이너로 전달하므로 외부 주소를 다시 빌드할 필요가 없습니다.
+- Render 배포는 `Dockerfile.Render`가 Blazor 정적 파일을 API의 `wwwroot`에 합쳐 한 주소에서 화면과 `/api`를 제공합니다.
 - API Redis 주소: 환경 변수 `ConnectionStrings__Redis`
 - 캐릭터 가중치 원본 주소: `StarRailScore__BaseUrl` (기본값은 검증한 GitHub 커밋에 고정)
 - 허용할 클라이언트 출처: `ClientOrigins__0`, `ClientOrigins__1` 형식의 환경 변수
@@ -250,6 +272,9 @@ docs/
   research/CHARACTER_APPEARANCE.md
 .github/workflows/ci.yml
 docker-compose.yml
+Dockerfile.Render
+render.yaml
+docs/images/
 ```
 
 ## 알려진 제한사항

@@ -14,4 +14,8 @@
     <ProjectReference Include="..\ArtifactGrade.Domain\ArtifactGrade.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ArtifactGrade.Api.Tests" />
+  </ItemGroup>
+
 </Project>

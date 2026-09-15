@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: honkai-starrail-artifact-grade
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.Render
+    dockerContext: .
+    healthCheckPath: /api/health/live
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__Redis
+        fromService:
+          type: keyvalue
+          name: artifact-grade-redis
+          property: connectionString
+
+  - type: keyvalue
+    name: artifact-grade-redis
+    plan: free
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru

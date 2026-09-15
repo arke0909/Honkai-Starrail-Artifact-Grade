@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+
+COPY NuGet.Config ./
+COPY src/ArtifactGrade.Domain/ArtifactGrade.Domain.csproj src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Api/ArtifactGrade.Api.csproj src/ArtifactGrade.Api/
+COPY src/ArtifactGrade.Client/ArtifactGrade.Client.csproj src/ArtifactGrade.Client/
+RUN dotnet restore src/ArtifactGrade.Api/ArtifactGrade.Api.csproj --configfile NuGet.Config
+RUN dotnet restore src/ArtifactGrade.Client/ArtifactGrade.Client.csproj --configfile NuGet.Config
+
+COPY src/ArtifactGrade.Domain/ src/ArtifactGrade.Domain/
+COPY src/ArtifactGrade.Api/ src/ArtifactGrade.Api/
+COPY src/ArtifactGrade.Client/ src/ArtifactGrade.Client/
+RUN dotnet publish src/ArtifactGrade.Client/ArtifactGrade.Client.csproj -c Release --no-restore -o /client
+RUN dotnet publish src/ArtifactGrade.Api/ArtifactGrade.Api.csproj -c Release --no-restore -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY --from=build /app .
+COPY --from=build /client/wwwroot ./wwwroot
+ENV ASPNETCORE_URLS=http://0.0.0.0:10000
+EXPOSE 10000
+ENTRYPOINT ["dotnet", "ArtifactGrade.Api.dll"]

@@ -13,7 +13,7 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache,
     private const string CalculationCountKey = "artifact-grade:calculations:count";
     private const string CharacterProfilesKey =
         "artifact-grade:profiles:starrailscore:fb8268bc6345c52501bd4ec23f8df89b26497e0a";
-    private readonly string _connectionString;
+    private readonly ConfigurationOptions _connectionConfiguration;
     private readonly ILogger<RedisCalculationStore> _logger;
     private readonly SemaphoreSlim _connectionLock = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
@@ -25,7 +25,7 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache,
 
     public RedisCalculationStore(string connectionString, ILogger<RedisCalculationStore> logger)
     {
-        _connectionString = connectionString;
+        _connectionConfiguration = RedisConnectionConfiguration.Parse(connectionString);
         _logger = logger;
     }
 
@@ -132,7 +132,7 @@ public sealed class RedisCalculationStore : IAsyncDisposable, IRelicImportCache,
             }
 
             _logger.LogInformation("Redis 연결을 시도합니다.");
-            _connection = await ConnectionMultiplexer.ConnectAsync(_connectionString);
+            _connection = await ConnectionMultiplexer.ConnectAsync(_connectionConfiguration);
             return _connection;
         }
         finally

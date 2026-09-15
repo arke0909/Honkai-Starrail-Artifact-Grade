@@ -15,6 +15,6 @@ jobs:
       - name: Restore
         run: dotnet restore ArtifactGrade.slnx --configfile NuGet.Config
       - name: Test
-        run: dotnet test tests/ArtifactGrade.Domain.Tests/ArtifactGrade.Domain.Tests.csproj --no-restore --configuration Release
+        run: dotnet test ArtifactGrade.slnx --no-restore --configuration Release
       - name: Build
         run: dotnet build ArtifactGrade.slnx --no-restore --configuration Release

@@ -8,6 +8,7 @@ using ArtifactGrade.Domain;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,8 +100,12 @@ builder.Services.AddSingleton(provider => new StarRailScoreProfileProvider(
     provider.GetRequiredService<ILogger<StarRailScoreProfileProvider>>()));
 
 var app = builder.Build();
+var staticFileTypes = new FileExtensionContentTypeProvider();
+staticFileTypes.Mappings[".dat"] = "application/octet-stream";
 
 app.UseForwardedHeaders();
+app.UseDefaultFiles();
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = staticFileTypes });
 app.UseCors();
 app.UseRateLimiter();
 
@@ -312,6 +317,14 @@ app.MapGet("/api/health", async (
     }
 });
 
+app.MapGet("/api/health/live", () =>
+    Results.Ok(new { status = "alive" }));
+
+app.MapFallback("/api/{**path}", () =>
+    Results.NotFound(new { message = "요청한 API 주소를 찾을 수 없습니다." }));
+
+app.MapFallbackToFile("index.html");
+
 app.Run();
 
 static async Task<string> ReadJsonBodyAsync(
@@ -345,3 +358,7 @@ public sealed record ScoreSubmissionResponse(
     ScoreResult Result,
     bool RedisSaved,
     string? Warning);
+
+public partial class Program
+{
+}
