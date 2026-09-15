@@ -175,7 +175,7 @@ docker-compose.yml
 | 3. 개발 과정과 사용법 문서화 | 이 문서의 작업 기록·트러블슈팅과 README 유지 | O - 설치·실행·코드·트러블슈팅 작성 |
 | 4. 직접 사용 및 후기 | 실제 유물 10개 이상 평가 후 장단점과 개선점 작성 | O - 공개 UID의 실제 유물 48개로 장단점·개선점 작성 |
 | 5. 블로그 또는 SNS 게시 | 시연 자료와 배포 링크 게시 후 URL 기록 | X - 게시 전 |
-| 6. GitHub 정리 및 업로드 | 저장소 구조, README, 라이선스, 배포 링크 정리 및 푸시 | O - `codex/csharp-relic-scorer` 브랜치 업로드 완료 |
+| 6. GitHub 정리 및 업로드 | 저장소 구조, README, 라이선스, 배포 링크 정리 및 푸시 | O - 기능 브랜치와 `main` 업로드·CI 통과 |
 
 현재 충족 점수는 16점이며, 최종 목표는 6개 항목 모두 충족하여 24점을 확보하는 것이다. 상태는 실제 결과와 증거를 확인한 경우에만 O로 변경한다.
 
@@ -518,4 +518,5 @@ docker-compose.yml
 - 기준 빌드 문제와 해결: 처음 Release 빌드는 실행 중인 API가 출력 DLL을 잠가 실패했다. 해당 API만 잠시 중지한 뒤 빌드와 테스트를 통과시키고 숨김 프로세스로 다시 실행했다. 첫 숨김 실행은 샌드박스 환경의 `Path/PATH` 중복 때문에 실패했으나 승인된 외부 실행 환경에서 재기동해 복구했다.
 - 배포 검토와 수정: 첫 검토에서 Render의 상태 검사가 Redis 의존 `/api/health`를 사용해 Redis 재시작 때 계산 가능한 웹 서비스까지 재시작할 수 있고, SPA 폴백 때문에 존재하지 않는 `/api/*`가 HTML 200으로 위장되는 문제를 확인했다. Redis와 무관한 `/api/health/live`를 Render 상태 검사로 지정하고, 잘못된 API 주소는 JSON 404로 끝나게 분리했다. 생존 상태, API 404, SPA 클라이언트 경로의 세 회귀 테스트를 먼저 실패시킨 뒤 수정해 통과시켰다.
 - 최종 자동 검증: 전체 Release 빌드는 경고 0개·오류 0개였고 xUnit 60개(도메인 40개, API 20개), `dotnet format --verify-no-changes`, `git diff --check`가 통과했다. 통합 배포 형태에서 `/api/health/live`는 200 JSON, 존재하지 않는 API는 404 JSON, 임의 클라이언트 경로와 Blazor 런타임 파일은 200을 반환했다. Redis가 없는 임시 검증 환경의 `/api/health`는 예상대로 503을 반환했다.
+- GitHub 반영: 최종 기능 커밋 `7e19f78`을 `codex/csharp-relic-scorer`와 `main`에 fast-forward로 푸시했다. GitHub Actions CI 실행 #18에서 솔루션 전체 테스트와 Release 빌드가 성공했다.
 - 현재 상태: 실제 Render 서비스와 Key Value 생성은 Render 로그인, GitHub 저장소 연결, 무료 리소스 생성 승인이 필요한 외부 작업이므로 Blueprint와 사용법까지만 자동 준비했다. 배포 후 `/api/health`의 `healthy/connected`, UID 두 번째 조회의 캐시 적중과 외부 주소를 문서에 기록해야 평가 항목 2가 완료된다. 실제 블로그 또는 SNS 게시 URL이 생기기 전까지 평가 항목 5는 완료로 표시하지 않는다.
